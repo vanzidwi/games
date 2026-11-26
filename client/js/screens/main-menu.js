@@ -2,7 +2,7 @@ import { GRAPHICS_QUALITY } from '@shared/constants.js';
 import { settingsManager } from '../utils/settings.js';
 import { soundFX } from '../utils/sound.js';
 
-export function renderMainMenu(container, { onNavigate }) {
+export function renderMainMenu(container, { onNavigate, socket }) {
   const cfg = settingsManager.get();
 
   container.innerHTML = `
@@ -11,6 +11,10 @@ export function renderMainMenu(container, { onNavigate }) {
         <div class="menu-badge">3D MULTIPLAYER PARTY GAME</div>
         <h1 class="menu-title">JAWAB ATAU HUKUMAN!</h1>
         <p class="menu-tagline">"Berani bertanya? Berani menjawab?"</p>
+
+        <div id="menu-conn-status" class="muted-note" style="margin-bottom: 14px;">
+          ${socket?.connected ? '🟢 Terhubung ke Server' : '🟡 Menghubungkan ke Server...'}
+        </div>
 
         <div class="menu-actions">
           <button id="btn-create-room" class="btn-menu btn-gold" type="button">
@@ -64,6 +68,21 @@ export function renderMainMenu(container, { onNavigate }) {
     </div>
   `;
 
+  const statusEl = container.querySelector('#menu-conn-status');
+  const onConnect = () => {
+    if (statusEl) statusEl.textContent = '🟢 Terhubung ke Server';
+  };
+  const onDisconnect = () => {
+    if (statusEl) statusEl.textContent = '🔴 Terputus dari Server';
+  };
+  const onConnectError = () => {
+    if (statusEl) statusEl.textContent = '🔴 Gagal terhubung ke Server (Cek VITE_SERVER_URL)';
+  };
+
+  socket?.on('connect', onConnect);
+  socket?.on('disconnect', onDisconnect);
+  socket?.on('connect_error', onConnectError);
+
   const bindBtnSound = (btn) => {
     btn.addEventListener('mouseenter', () => soundFX.hover());
     btn.addEventListener('click', () => soundFX.click());
@@ -110,4 +129,12 @@ export function renderMainMenu(container, { onNavigate }) {
     sensLabel.textContent = `${cameraSensitivity.toFixed(1)}x`;
     settingsManager.update({ cameraSensitivity });
   });
+
+  return {
+    dispose: () => {
+      socket?.off('connect', onConnect);
+      socket?.off('disconnect', onDisconnect);
+      socket?.off('connect_error', onConnectError);
+    }
+  };
 }
