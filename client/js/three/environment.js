@@ -15,18 +15,18 @@ export function getPlayerSlotTransform(slotIndex) {
 }
 
 /**
- * Membangun lingkungan studio game show 3D stylized cartoon:
+ * Membangun lingkungan studio game show 3D stylized cartoon yang terang & cerah:
  * lantai panggung, meja bundar tengah, 6 kursi (1 Host + 5 Player), dan dekorasi studio.
  */
 export function buildStudioEnvironment(scene) {
   const group = new THREE.Group();
 
-  // Lantai studio
+  // Lantai studio terang
   const floorGeo = new THREE.CylinderGeometry(11, 11, 0.3, 48);
   const floorMat = new THREE.MeshStandardMaterial({
-    color: '#171c3a',
-    roughness: 0.75,
-    metalness: 0.15
+    color: '#3b4f8c',
+    roughness: 0.65,
+    metalness: 0.1
   });
   const floor = new THREE.Mesh(floorGeo, floorMat);
   floor.position.y = -0.15;
@@ -34,9 +34,9 @@ export function buildStudioEnvironment(scene) {
   group.add(floor);
 
   // Cincin neon panggung
-  const ringGeo = new THREE.RingGeometry(4.6, 4.82, 64);
+  const ringGeo = new THREE.RingGeometry(4.6, 4.86, 64);
   const ringMat = new THREE.MeshBasicMaterial({
-    color: '#38bdf8',
+    color: '#67e8f9',
     side: THREE.DoubleSide
   });
   const ring = new THREE.Mesh(ringGeo, ringMat);
@@ -47,9 +47,9 @@ export function buildStudioEnvironment(scene) {
   // Meja bundar besar di tengah
   const tableTopGeo = new THREE.CylinderGeometry(2.15, 2.05, 0.18, 40);
   const tableTopMat = new THREE.MeshStandardMaterial({
-    color: '#2d3561',
-    roughness: 0.4,
-    metalness: 0.2
+    color: '#4f65b8',
+    roughness: 0.35,
+    metalness: 0.15
   });
   const tableTop = new THREE.Mesh(tableTopGeo, tableTopMat);
   tableTop.position.y = 0.92;
@@ -61,8 +61,8 @@ export function buildStudioEnvironment(scene) {
   const trimGeo = new THREE.TorusGeometry(2.14, 0.045, 12, 48);
   const trimMat = new THREE.MeshStandardMaterial({
     color: '#fbbf24',
-    roughness: 0.3,
-    metalness: 0.6
+    roughness: 0.25,
+    metalness: 0.55
   });
   const trim = new THREE.Mesh(trimGeo, trimMat);
   trim.rotation.x = Math.PI / 2;
@@ -71,7 +71,7 @@ export function buildStudioEnvironment(scene) {
 
   // Pilar penyangga meja
   const baseGeo = new THREE.CylinderGeometry(0.55, 0.85, 0.9, 24);
-  const baseMat = new THREE.MeshStandardMaterial({ color: '#1e2547', roughness: 0.5 });
+  const baseMat = new THREE.MeshStandardMaterial({ color: '#334155', roughness: 0.45 });
   const tableBase = new THREE.Mesh(baseGeo, baseMat);
   tableBase.position.y = 0.45;
   tableBase.castShadow = true;
@@ -81,7 +81,7 @@ export function buildStudioEnvironment(scene) {
   const createChair = (accentColor) => {
     const chair = new THREE.Group();
     const seatGeo = new THREE.BoxGeometry(0.75, 0.12, 0.72);
-    const seatMat = new THREE.MeshStandardMaterial({ color: accentColor, roughness: 0.55 });
+    const seatMat = new THREE.MeshStandardMaterial({ color: accentColor, roughness: 0.5 });
     const seat = new THREE.Mesh(seatGeo, seatMat);
     seat.position.y = 0.52;
     seat.castShadow = true;
@@ -94,7 +94,7 @@ export function buildStudioEnvironment(scene) {
     chair.add(back);
 
     const legGeo = new THREE.CylinderGeometry(0.08, 0.12, 0.5, 12);
-    const legMat = new THREE.MeshStandardMaterial({ color: '#94a3b8', metalness: 0.5 });
+    const legMat = new THREE.MeshStandardMaterial({ color: '#cbd5e1', metalness: 0.4 });
     const leg = new THREE.Mesh(legGeo, legMat);
     leg.position.y = 0.25;
     chair.add(leg);
@@ -102,26 +102,26 @@ export function buildStudioEnvironment(scene) {
     return chair;
   };
 
-  // Kursi Host di tengah (sedikit lebih tinggi & aksen emas)
-  const hostChair = createChair('#d97706');
+  // Kursi Host di tengah (aksen emas)
+  const hostChair = createChair('#f59e0b');
   hostChair.position.set(0, 0.08, -0.35);
   group.add(hostChair);
 
   // 5 Kursi Player mengelilingi meja
   for (let slot = 1; slot <= 5; slot += 1) {
     const { x, z, rotY } = getPlayerSlotTransform(slot);
-    const chair = createChair('#334155');
+    const chair = createChair('#475569');
     chair.position.set(x, 0, z);
     chair.rotation.y = rotY;
     group.add(chair);
   }
 
-  // Dekorasi studio ringan di belakang (pilar lampu)
+  // Dekorasi pilar lampu studio yang cerah
   const pillarGeo = new THREE.CylinderGeometry(0.22, 0.22, 5.5, 12);
   const pillarMat = new THREE.MeshStandardMaterial({
-    color: '#1e293b',
-    emissive: '#1d4ed8',
-    emissiveIntensity: 0.25
+    color: '#60a5fa',
+    emissive: '#38bdf8',
+    emissiveIntensity: 0.45
   });
   for (let i = 0; i < 6; i += 1) {
     const a = (i / 6) * Math.PI * 2;
