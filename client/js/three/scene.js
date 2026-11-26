@@ -4,17 +4,18 @@ export function createStudioScene({ transparent = false } = {}) {
   const scene = new THREE.Scene();
 
   if (!transparent) {
-    scene.background = new THREE.Color('#0c1026');
-    scene.fog = new THREE.FogExp2('#0c1026', 0.032);
+    // Latar studio game show yang terang, cerah, dan penuh warna
+    scene.background = new THREE.Color('#2b4c9b');
+    scene.fog = new THREE.FogExp2('#2b4c9b', 0.018);
   }
 
-  // Pencahayaan sinematik studio game show
-  const hemiLight = new THREE.HemisphereLight('#a5b4fc', '#1e1b4b', 0.9);
-  hemiLight.position.set(0, 12, 0);
+  // Pencahayaan studio yang terang dan merata
+  const hemiLight = new THREE.HemisphereLight('#ffffff', '#93c5fd', 1.45);
+  hemiLight.position.set(0, 14, 0);
   scene.add(hemiLight);
 
-  const keyLight = new THREE.DirectionalLight('#fff7ed', 1.35);
-  keyLight.position.set(5, 10, 6);
+  const keyLight = new THREE.DirectionalLight('#fffbeb', 1.75);
+  keyLight.position.set(5, 11, 7);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(1024, 1024);
   keyLight.shadow.camera.near = 1;
@@ -25,8 +26,12 @@ export function createStudioScene({ transparent = false } = {}) {
   keyLight.shadow.camera.bottom = -7;
   scene.add(keyLight);
 
-  const rimLight = new THREE.DirectionalLight('#38bdf8', 0.7);
-  rimLight.position.set(-7, 6, -6);
+  const fillLight = new THREE.DirectionalLight('#e0f2fe', 0.95);
+  fillLight.position.set(-6, 7, 5);
+  scene.add(fillLight);
+
+  const rimLight = new THREE.DirectionalLight('#fde68a', 0.85);
+  rimLight.position.set(-5, 6, -7);
   scene.add(rimLight);
 
   // Spotlight untuk menyorot Player yang sedang mendapat giliran
