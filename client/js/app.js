@@ -77,7 +77,10 @@ function initApp() {
       stage.speechOverlay.syncNameplates(null);
       stage.speechOverlay.hideQuestion();
       stage.hostLookController.setTargetPlayer(null);
-      renderMainMenu(uiRoot, { onNavigate: navigate });
+      activeScreenController = renderMainMenu(uiRoot, {
+        onNavigate: navigate,
+        socket
+      });
       return;
     }
 
@@ -149,6 +152,9 @@ function initApp() {
     }
   };
 
+  // Tampilkan Main Menu segera tanpa menunggu event connect socket
+  navigate('main-menu');
+
   // Sinkronisasi state real-time dari server
   socket.on(SOCKET_EVENTS.ROOM_STATE, (state) => {
     if (!currentSession || state.roomCode !== currentSession.roomCode) return;
@@ -191,8 +197,7 @@ function initApp() {
 
   socket.on(SOCKET_EVENTS.QUESTION_RECEIVED, ({ activePlayerId, question }) => {
     soundFX.question();
-    const playerName = activePlayerId;
-    stage.speechOverlay.showQuestion(activePlayerId, playerName, question);
+    stage.speechOverlay.showQuestion(activePlayerId, activePlayerId, question);
   });
 
   socket.on(SOCKET_EVENTS.ANSWER_RESULT, ({ answer }) => {
@@ -231,8 +236,6 @@ function initApp() {
           sessionToken: saved.sessionToken,
           overlayToken: res.overlayToken || saved.overlayToken
         };
-        socket.emit(SOCKET_EVENTS.SYSTEM_PING);
-        // Trigger sinkronisasi screen sesuai state terbaru
         const st = res.state.state;
         if (st === GAME_STATES.WAITING || st === GAME_STATES.LOBBY_READY) {
           navigate('lobby', { initialState: res.state });
@@ -251,9 +254,6 @@ function initApp() {
         return;
       }
       socketClient.clearSession();
-    }
-    if (!currentSession) {
-      navigate('main-menu');
     }
   });
 }
