@@ -15,7 +15,7 @@ function createStylizedFallback({ isHost = false, palette }) {
   const modelGroup = new THREE.Group();
 
   const torso = new THREE.Group();
-  torso.position.y = isHost ? 0.15 : 0.72;
+  torso.position.y = isHost ? 0.05 : 0.72;
   modelGroup.add(torso);
 
   const bodyMat = new THREE.MeshStandardMaterial({
@@ -127,16 +127,20 @@ function saveRestPose(bones) {
   });
 }
 
-function showLoadToast(message) {
-  let el = document.getElementById('glb-debug-toast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'glb-debug-toast';
-    el.style.cssText =
-      'position:fixed;bottom:10px;left:10px;z-index:999;background:rgba(15,23,42,0.9);color:#fde68a;padding:6px 10px;border-radius:8px;font-size:12px;pointer-events:none;max-width:85vw;';
-    document.body.appendChild(el);
-  }
-  el.textContent = message;
+function loadWithFallbackPaths(loader, paths, onSuccess, onFail) {
+  const tryIndex = (idx) => {
+    if (idx >= paths.length) {
+      onFail?.(new Error(`Semua path gagal: ${paths.join(', ')}`));
+      return;
+    }
+    loader.load(
+      paths[idx],
+      onSuccess,
+      undefined,
+      () => tryIndex(idx + 1)
+    );
+  };
+  tryIndex(0);
 }
 
 export class CharacterManager {
@@ -145,12 +149,14 @@ export class CharacterManager {
     this.activeSpotlight = activeSpotlight;
     this.characters = new Map();
 
-    // Host berada tepat di atas tengah meja (permukaan atas Meja.glb berada di y ~ 0.50)
+    const initialTableY = scene.userData.tableTopY || 1.25;
+
+    // Host berada tepat di atas permukaan meja bundar
     this.initCharacterSlot({
       id: 'HOST',
       slotIndex: 0,
       isHost: true,
-      position: new THREE.Vector3(0, 0.5, 0),
+      position: new THREE.Vector3(0, initialTableY, 0),
       rotY: 0,
       visible: true
     });
@@ -171,6 +177,13 @@ export class CharacterManager {
     this.loadCustomModels();
   }
 
+  setHostHeight(tableTopY) {
+    const host = this.characters.get('HOST');
+    if (host && typeof tableTopY === 'number') {
+      host.root.position.y = tableTopY;
+    }
+  }
+
   initCharacterSlot({ id, slotIndex, isHost, position, rotY, visible }) {
     const root = new THREE.Group();
     root.position.copy(position);
@@ -183,7 +196,7 @@ export class CharacterManager {
     saveRestPose(fallback.bones);
 
     const headAnchor = new THREE.Object3D();
-    headAnchor.position.set(0, isHost ? 1.45 : 1.78, 0);
+    headAnchor.position.set(0, isHost ? 1.4 : 1.78, 0);
     root.add(headAnchor);
 
     const highlightRing = new THREE.Mesh(
@@ -217,9 +230,10 @@ export class CharacterManager {
   loadCustomModels() {
     const loader = new GLTFLoader();
 
-    // Muat host.glb di atas meja (yBase relatif terhadap root Host = 0)
-    loader.load(
-      '/characters/host.glb',
+    // Coba /characters/host.glb, lalu fallback ke /environment/host.glb
+    loadWithFallbackPaths(
+      loader,
+      ['/characters/host.glb', '/environment/host.glb'],
       (gltf) => {
         const hostChar = this.characters.get('HOST');
         if (!hostChar) return;
@@ -239,20 +253,18 @@ export class CharacterManager {
         hostChar.bones = { torso, neck, head, leftArm: lArm, rightArm: rArm };
         saveRestPose(hostChar.bones);
         hostChar.eyes = [];
-        hostChar.headAnchor.position.set(0, box.max.y - 0.25, 0);
+        hostChar.headAnchor.position.set(0, box.max.y - 0.15, 0);
 
         hostChar.fallbackGroup.visible = false;
         hostChar.root.add(model);
       },
-      undefined,
-      (err) => {
-        showLoadToast(`host.glb error: ${err?.message || err}`);
-      }
+      (err) => console.warn('[3D] Gagal memuat host.glb:', err)
     );
 
-    // Muat player.glb untuk 5 slot Player
-    loader.load(
-      '/characters/player.glb',
+    // Coba /characters/player.glb, lalu fallback ke /environment/player.glb
+    loadWithFallbackPaths(
+      loader,
+      ['/characters/player.glb', '/environment/player.glb'],
       (gltf) => {
         for (let slot = 1; slot <= 5; slot += 1) {
           const char = this.characters.get(`P${slot}`);
@@ -274,10 +286,7 @@ export class CharacterManager {
           char.root.add(model);
         }
       },
-      undefined,
-      (err) => {
-        showLoadToast(`player.glb error: ${err?.message || err}`);
-      }
+      (err) => console.warn('[3D] Gagal memuat player.glb:', err)
     );
   }
 
