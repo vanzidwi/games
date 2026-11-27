@@ -5,41 +5,54 @@ import { soundFX } from '../utils/sound.js';
 
 export function renderJoinRoom(container, { onNavigate, onRoomEntered }) {
   container.innerHTML = `
-    <div class="menu-overlay">
-      <form id="join-room-form" class="card-panel" novalidate>
-        <button id="btn-back" class="btn-back" type="button">← Kembali</button>
-        <h2 class="panel-title">Gabung Room (Player)</h2>
-        <p class="panel-desc">Masukkan nama dan kode room 6 karakter dari Host.</p>
+    <div class="menu-overlay menu-minimal">
+      <header class="menu-topbar">
+        <button id="btn-back" class="btn-topbar-icon" type="button">← Kembali</button>
+        <div class="conn-pill is-online"><span>🎮 Mode Player</span></div>
+      </header>
 
-        <div class="form-group">
-          <label for="player-name">Nama Player (maks. ${GAME_CONFIG.MAX_NAME_LENGTH} karakter)</label>
-          <input
-            id="player-name"
-            type="text"
-            maxlength="${GAME_CONFIG.MAX_NAME_LENGTH}"
-            placeholder="Contoh: Budi"
-            required
-            autocomplete="off"
-          />
+      <div class="menu-title-header">
+        <h2 class="minimal-title" style="font-size: clamp(1.5rem, 4.5vw, 2.2rem);">
+          GABUNG <span>ROOM</span>
+        </h2>
+        <p class="minimal-tagline">Masukkan nama dan kode 6 karakter dari Host</p>
+      </div>
+
+      <div class="menu-spacer"></div>
+
+      <form id="join-room-form" class="menu-bottom-dock dock-form" novalidate>
+        <div class="dock-input-grid">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="player-name">Nama Player</label>
+            <input
+              id="player-name"
+              type="text"
+              maxlength="${GAME_CONFIG.MAX_NAME_LENGTH}"
+              placeholder="Nama Anda..."
+              required
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="room-code">Kode Room</label>
+            <input
+              id="room-code"
+              type="text"
+              maxlength="${GAME_CONFIG.ROOM_CODE_LENGTH}"
+              placeholder="A7K9P2"
+              style="text-transform: uppercase; letter-spacing: 0.14em; font-weight: 800; text-align: center;"
+              required
+              autocomplete="off"
+            />
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="room-code">Kode Room (6 karakter)</label>
-          <input
-            id="room-code"
-            type="text"
-            maxlength="${GAME_CONFIG.ROOM_CODE_LENGTH}"
-            placeholder="Contoh: A7K9P2"
-            style="text-transform: uppercase; letter-spacing: 0.16em; font-weight: 700;"
-            required
-            autocomplete="off"
-          />
-        </div>
+        <p id="join-error" class="error-text hidden" style="margin-top: 8px;"></p>
 
-        <p id="join-error" class="error-text hidden"></p>
-
-        <button id="btn-submit-join" class="btn-menu btn-cyan" type="submit">
-          GABUNG ROOM
+        <button id="btn-submit-join" class="btn-dock btn-dock-dark" style="width:100%; margin-top: 10px;" type="submit">
+          <span>🎮</span>
+          <span>GABUNG ROOM</span>
         </button>
       </form>
     </div>
@@ -88,7 +101,7 @@ export function renderJoinRoom(container, { onNavigate, onRoomEntered }) {
       errorEl.textContent = res.error || 'Gagal bergabung ke room.';
       errorEl.classList.remove('hidden');
       submitBtn.disabled = false;
-      submitBtn.textContent = 'GABUNG ROOM';
+      submitBtn.innerHTML = '<span>🎮</span><span>GABUNG ROOM</span>';
       return;
     }
 
