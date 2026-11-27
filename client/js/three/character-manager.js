@@ -15,7 +15,7 @@ function createStylizedFallback({ isHost = false, palette }) {
   const modelGroup = new THREE.Group();
 
   const torso = new THREE.Group();
-  torso.position.y = isHost ? 0.85 : 0.72;
+  torso.position.y = isHost ? 0.15 : 0.72;
   modelGroup.add(torso);
 
   const bodyMat = new THREE.MeshStandardMaterial({
@@ -127,23 +127,35 @@ function saveRestPose(bones) {
   });
 }
 
+function showLoadToast(message) {
+  let el = document.getElementById('glb-debug-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'glb-debug-toast';
+    el.style.cssText =
+      'position:fixed;bottom:10px;left:10px;z-index:999;background:rgba(15,23,42,0.9);color:#fde68a;padding:6px 10px;border-radius:8px;font-size:12px;pointer-events:none;max-width:85vw;';
+    document.body.appendChild(el);
+  }
+  el.textContent = message;
+}
+
 export class CharacterManager {
   constructor(scene, activeSpotlight) {
     this.scene = scene;
     this.activeSpotlight = activeSpotlight;
     this.characters = new Map();
 
-    // Buat Host di tengah
+    // Host berada tepat di atas tengah meja (permukaan atas Meja.glb berada di y ~ 0.50)
     this.initCharacterSlot({
       id: 'HOST',
       slotIndex: 0,
       isHost: true,
-      position: new THREE.Vector3(0, 0, -0.55),
+      position: new THREE.Vector3(0, 0.5, 0),
       rotY: 0,
       visible: true
     });
 
-    // Buat 5 Player mengelilingi meja
+    // 5 Player mengelilingi meja
     for (let slot = 1; slot <= 5; slot += 1) {
       const { x, z, rotY } = getPlayerSlotTransform(slot);
       this.initCharacterSlot({
@@ -171,7 +183,7 @@ export class CharacterManager {
     saveRestPose(fallback.bones);
 
     const headAnchor = new THREE.Object3D();
-    headAnchor.position.set(0, isHost ? 2.15 : 1.78, 0);
+    headAnchor.position.set(0, isHost ? 1.45 : 1.78, 0);
     root.add(headAnchor);
 
     const highlightRing = new THREE.Mesh(
@@ -205,7 +217,7 @@ export class CharacterManager {
   loadCustomModels() {
     const loader = new GLTFLoader();
 
-    // Muat host.glb
+    // Muat host.glb di atas meja (yBase relatif terhadap root Host = 0)
     loader.load(
       '/characters/host.glb',
       (gltf) => {
@@ -213,9 +225,8 @@ export class CharacterManager {
         if (!hostChar) return;
 
         const model = gltf.scene;
-        const box = normalizeCharacterGLB(model, 1.8, 0.05);
+        const box = normalizeCharacterGLB(model, 1.55, 0);
 
-        // Jika rig CC_Base berada dalam T-Pose, turunkan lengan secara natural
         const lArm = findBoneByKeywords(model, ['l_upperarm', 'leftarm', 'left_arm']);
         const rArm = findBoneByKeywords(model, ['r_upperarm', 'rightarm', 'right_arm']);
         if (lArm) lArm.rotation.z += 1.1;
@@ -228,15 +239,14 @@ export class CharacterManager {
         hostChar.bones = { torso, neck, head, leftArm: lArm, rightArm: rArm };
         saveRestPose(hostChar.bones);
         hostChar.eyes = [];
-        hostChar.headAnchor.position.set(0, box.max.y + 0.25, 0);
+        hostChar.headAnchor.position.set(0, box.max.y - 0.25, 0);
 
         hostChar.fallbackGroup.visible = false;
         hostChar.root.add(model);
-        console.log('[3D] host.glb berhasil dimuat.');
       },
       undefined,
       (err) => {
-        console.warn('[3D] Gagal memuat host.glb:', err);
+        showLoadToast(`host.glb error: ${err?.message || err}`);
       }
     );
 
@@ -263,11 +273,10 @@ export class CharacterManager {
           char.fallbackGroup.visible = false;
           char.root.add(model);
         }
-        console.log('[3D] player.glb berhasil dimuat.');
       },
       undefined,
       (err) => {
-        console.warn('[3D] Gagal memuat player.glb:', err);
+        showLoadToast(`player.glb error: ${err?.message || err}`);
       }
     );
   }
