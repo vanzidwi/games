@@ -12,7 +12,7 @@ export function renderObsOverlay(container, { roomCode, overlayToken, stage }) {
   container.innerHTML = `
     <div class="obs-overlay-root">
       <header class="obs-top">
-        <div class="obs-brand">JAWAB ATAU HUKUMAN!</div>
+        <div class="obs-brand">PASTI GUA JAWAB!</div>
         <div class="obs-stats">
           <span id="obs-round" class="obs-pill">Ronde 1/2</span>
           <span id="obs-progress" class="obs-pill">Pertanyaan 0/10</span>
