@@ -115,8 +115,7 @@ function normalizeCharacterGLB(model, targetHeight, yBase = 0) {
   });
 
   model.updateMatrixWorld(true);
-  const finalBox = new THREE.Box3().setFromObject(model);
-  return finalBox;
+  return new THREE.Box3().setFromObject(model);
 }
 
 function saveRestPose(bones) {
@@ -233,10 +232,11 @@ export class CharacterManager {
 
         hostChar.fallbackGroup.visible = false;
         hostChar.root.add(model);
+        console.log('[3D] host.glb berhasil dimuat.');
       },
       undefined,
-      () => {
-        // Fallback karakter stylized tetap aktif jika host.glb gagal dimuat
+      (err) => {
+        console.warn('[3D] Gagal memuat host.glb:', err);
       }
     );
 
@@ -263,10 +263,11 @@ export class CharacterManager {
           char.fallbackGroup.visible = false;
           char.root.add(model);
         }
+        console.log('[3D] player.glb berhasil dimuat.');
       },
       undefined,
-      () => {
-        // Fallback karakter stylized tetap aktif jika player.glb gagal dimuat
+      (err) => {
+        console.warn('[3D] Gagal memuat player.glb:', err);
       }
     );
   }
