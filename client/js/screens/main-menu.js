@@ -28,9 +28,9 @@ export function renderMainMenu(container, { onNavigate, socket }) {
 
       <div class="menu-title-header">
         <h1 class="minimal-title">
-          JAWAB ATAU <span>HUKUMAN!</span>
+          PASTI GUA <span>JAWAB!</span>
         </h1>
-        <p class="minimal-tagline">"Berani bertanya? Berani menjawab?"</p>
+        <p class="minimal-tagline">"Gua Cuma Bisa Jawab YA dan TIDAK"</p>
       </div>
 
       <div class="menu-spacer"></div>
