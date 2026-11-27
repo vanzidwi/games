@@ -5,19 +5,29 @@ import { soundFX } from '../utils/sound.js';
 
 export function renderCreateRoom(container, { onNavigate, onRoomEntered }) {
   container.innerHTML = `
-    <div class="menu-overlay">
-      <form id="create-room-form" class="card-panel" novalidate>
-        <button id="btn-back" class="btn-back" type="button">← Kembali</button>
-        <h2 class="panel-title">Buat Room (Host)</h2>
-        <p class="panel-desc">Anda akan duduk di tengah meja bundar sebagai Host.</p>
+    <div class="menu-overlay menu-minimal">
+      <header class="menu-topbar">
+        <button id="btn-back" class="btn-topbar-icon" type="button">← Kembali</button>
+        <div class="conn-pill is-online"><span>👑 Mode Host</span></div>
+      </header>
 
-        <div class="form-group">
+      <div class="menu-title-header">
+        <h2 class="minimal-title" style="font-size: clamp(1.5rem, 4.5vw, 2.2rem);">
+          BUAT <span>ROOM</span>
+        </h2>
+        <p class="minimal-tagline">Anda akan memimpin meja sebagai Host</p>
+      </div>
+
+      <div class="menu-spacer"></div>
+
+      <form id="create-room-form" class="menu-bottom-dock dock-form" novalidate>
+        <div class="form-group" style="margin-bottom: 10px;">
           <label for="host-name">Nama Host (maks. ${GAME_CONFIG.MAX_NAME_LENGTH} karakter)</label>
           <input
             id="host-name"
             type="text"
             maxlength="${GAME_CONFIG.MAX_NAME_LENGTH}"
-            placeholder="Contoh: StreamerGanteng"
+            placeholder="Masukkan nama Anda..."
             required
             autocomplete="off"
           />
@@ -25,8 +35,9 @@ export function renderCreateRoom(container, { onNavigate, onRoomEntered }) {
 
         <p id="create-error" class="error-text hidden"></p>
 
-        <button id="btn-submit-create" class="btn-menu btn-gold" type="submit">
-          BUAT ROOM
+        <button id="btn-submit-create" class="btn-dock btn-dock-gold" style="width:100%;" type="submit">
+          <span>👑</span>
+          <span>BUAT ROOM</span>
         </button>
       </form>
     </div>
@@ -63,7 +74,7 @@ export function renderCreateRoom(container, { onNavigate, onRoomEntered }) {
       errorEl.textContent = res.error || 'Gagal membuat room.';
       errorEl.classList.remove('hidden');
       submitBtn.disabled = false;
-      submitBtn.textContent = 'BUAT ROOM';
+      submitBtn.innerHTML = '<span>👑</span><span>BUAT ROOM</span>';
       return;
     }
 
