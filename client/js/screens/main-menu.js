@@ -6,75 +6,48 @@ export function renderMainMenu(container, { onNavigate, socket }) {
   const cfg = settingsManager.get();
 
   container.innerHTML = `
-    <div class="menu-overlay">
-      <div class="menu-topbar">
+    <div class="menu-overlay menu-minimal">
+      <header class="menu-topbar">
         <div id="menu-conn-status" class="conn-pill ${socket?.connected ? 'is-online' : 'is-connecting'}">
           <span class="conn-dot"></span>
-          <span class="conn-text">${socket?.connected ? 'Server Online' : 'Menghubungkan...'}</span>
+          <span class="conn-text">${socket?.connected ? 'Online' : 'Menghubungkan...'}</span>
         </div>
 
-        <button id="btn-quick-mute" class="btn-topbar-icon" type="button" title="Suara On/Off">
-          ${cfg.soundEnabled ? '🔊 Suara Aktif' : '🔇 Bisu'}
-        </button>
+        <div class="topbar-actions">
+          <button id="btn-how-to-play" class="btn-topbar-icon" type="button" title="Cara Main">
+            📖 Aturan
+          </button>
+          <button id="btn-quick-mute" class="btn-topbar-icon" type="button" title="Suara On/Off">
+            ${cfg.soundEnabled ? '🔊' : '🔇'}
+          </button>
+          <button id="btn-settings" class="btn-topbar-icon" type="button" title="Pengaturan">
+            ⚙️
+          </button>
+        </div>
+      </header>
+
+      <div class="menu-title-header">
+        <h1 class="minimal-title">
+          JAWAB ATAU <span>HUKUMAN!</span>
+        </h1>
+        <p class="minimal-tagline">"Berani bertanya? Berani menjawab?"</p>
       </div>
 
-      <div class="menu-center-stage">
-        <div class="menu-hero">
-          <div class="hero-glow"></div>
+      <div class="menu-spacer"></div>
 
-          <div class="menu-badge">
-            <span class="badge-spark">★</span>
-            LIVE 3D PARTY GAME SHOW
-            <span class="badge-spark">★</span>
-          </div>
-
-          <h1 class="menu-title">
-            <span class="title-line-top">JAWAB ATAU</span>
-            <span class="title-line-main">HUKUMAN!</span>
-          </h1>
-
-          <p class="menu-tagline">"Berani bertanya? Berani menjawab?"</p>
-
-          <div class="menu-highlights">
-            <div class="hl-chip">👥 <strong>6</strong> Pemain</div>
-            <div class="hl-chip">❓ <strong>10</strong> Pertanyaan</div>
-            <div class="hl-chip hl-warn">⚡ Maks <strong>2×</strong> Lewati</div>
-          </div>
-
-          <div class="menu-actions">
-            <button id="btn-create-room" class="btn-arcade btn-arcade-gold" type="button">
-              <span class="btn-arcade-icon">👑</span>
-              <span class="btn-arcade-copy">
-                <strong>BUAT ROOM</strong>
-                <small>Jadi Host &amp; atur daftar hukuman</small>
-              </span>
-              <span class="btn-arcade-arrow">→</span>
-            </button>
-
-            <button id="btn-join-room" class="btn-arcade btn-arcade-cyan" type="button">
-              <span class="btn-arcade-icon">🎮</span>
-              <span class="btn-arcade-copy">
-                <strong>JOIN ROOM</strong>
-                <small>Masuk sebagai Player dengan kode 6 karakter</small>
-              </span>
-              <span class="btn-arcade-arrow">→</span>
-            </button>
-
-            <div class="menu-secondary-row">
-              <button id="btn-how-to-play" class="btn-menu btn-ghost" type="button">
-                📖 CARA MAIN
-              </button>
-              <button id="btn-settings" class="btn-menu btn-ghost" type="button">
-                ⚙️ PENGATURAN
-              </button>
-            </div>
-          </div>
+      <div class="menu-bottom-dock">
+        <div class="dock-meta">6 Pemain &bull; 10 Pertanyaan &bull; Maks 2&times; Lewati</div>
+        <div class="dock-buttons">
+          <button id="btn-create-room" class="btn-dock btn-dock-gold" type="button">
+            <span>👑</span>
+            <span>BUAT ROOM</span>
+          </button>
+          <button id="btn-join-room" class="btn-dock btn-dock-dark" type="button">
+            <span>🎮</span>
+            <span>JOIN ROOM</span>
+          </button>
         </div>
       </div>
-
-      <footer class="menu-bottom-hint">
-        <span>💡 Geser layar untuk memutar kamera studio 3D</span>
-      </footer>
 
       <!-- Modal Cara Main -->
       <div id="howto-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
@@ -84,7 +57,7 @@ export function renderMainMenu(container, { onNavigate, socket }) {
             <button id="btn-close-howto" class="btn-icon" type="button" aria-label="Tutup">✕</button>
           </div>
           <ul class="howto-list">
-            <li><strong>1 Host &amp; 5 Player:</strong> Host duduk di tengah meja bundar, 5 Player mengelilingi meja.</li>
+            <li><strong>1 Host &amp; 5 Player:</strong> Host berada di tengah meja bundar, 5 Player mengelilingi meja.</li>
             <li><strong>2 Ronde (10 Giliran):</strong> Tiap Player punya 2 kesempatan bertanya (maks. 60 detik per giliran).</li>
             <li><strong>3 Pilihan Host:</strong> Host wajib menjawab <strong>YA</strong>, <strong>TIDAK</strong>, atau <strong>LEWATI</strong>.</li>
             <li><strong>Batas LEWATI 2×:</strong> Jika Host memakai <strong>LEWATI ke-2</strong>, Host langsung kalah dan harus memutar <strong>Roda Hukuman</strong>!</li>
@@ -142,9 +115,9 @@ export function renderMainMenu(container, { onNavigate, socket }) {
     statusTextEl.textContent = label;
   };
 
-  const onConnect = () => setConnUI('is-online', 'Server Online');
-  const onDisconnect = () => setConnUI('is-error', 'Terputus dari Server');
-  const onConnectError = () => setConnUI('is-error', 'Gagal terhubung (Cek VITE_SERVER_URL)');
+  const onConnect = () => setConnUI('is-online', 'Online');
+  const onDisconnect = () => setConnUI('is-error', 'Terputus');
+  const onConnectError = () => setConnUI('is-error', 'Gagal Terhubung');
 
   socket?.on('connect', onConnect);
   socket?.on('disconnect', onDisconnect);
@@ -199,7 +172,7 @@ export function renderMainMenu(container, { onNavigate, socket }) {
   const sensLabel = container.querySelector('#sens-label');
 
   const syncMuteLabel = (enabled) => {
-    quickMuteBtn.textContent = enabled ? '🔊 Suara Aktif' : '🔇 Bisu';
+    quickMuteBtn.textContent = enabled ? '🔊' : '🔇';
   };
 
   quickMuteBtn.addEventListener('click', () => {
