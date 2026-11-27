@@ -24,7 +24,7 @@ export class SpeechBubbleOverlay {
     this.authorEl = this.bubbleEl.querySelector('.speech-bubble-author');
     this.textEl = this.bubbleEl.querySelector('.speech-bubble-text');
 
-    this.activeBubble = null; // { playerId, playerName, text }
+    this.activeBubble = null;
 
     this.nameplates = new Map();
     for (const char of this.characterManager.getAllCharacters()) {
@@ -58,6 +58,7 @@ export class SpeechBubbleOverlay {
   syncNameplates(roomState, showReadyBadges = false) {
     if (!roomState) {
       for (const el of this.nameplates.values()) {
+        el.innerHTML = '';
         el.classList.add('hidden');
       }
       return;
@@ -75,6 +76,7 @@ export class SpeechBubbleOverlay {
       const el = this.nameplates.get(p.id);
       if (!el) return;
       if (p.empty) {
+        el.innerHTML = '';
         el.classList.add('hidden');
         return;
       }
@@ -113,14 +115,12 @@ export class SpeechBubbleOverlay {
   }
 
   update() {
-    // Update posisi nameplate semua karakter yang terlihat
     for (const char of this.characterManager.getAllCharacters()) {
       const el = this.nameplates.get(char.id);
-      if (!el || !char.visible) {
+      if (!el || !char.visible || !el.innerHTML.trim()) {
         if (el) el.classList.add('hidden');
         continue;
       }
-      // Jika sedang ada speech bubble di atas Player ini, sembunyikan nameplate-nya agar tidak bertumpuk
       if (this.activeBubble && this.activeBubble.playerId === char.id) {
         el.classList.add('hidden');
         continue;
@@ -134,7 +134,6 @@ export class SpeechBubbleOverlay {
       el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0) translate(-50%, -100%)`;
     }
 
-    // Update posisi speech bubble di atas kepala Player aktif
     if (this.activeBubble) {
       const targetChar = this.characterManager.getCharacter(this.activeBubble.playerId);
       if (targetChar && targetChar.visible) {
