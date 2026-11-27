@@ -24,7 +24,8 @@ export class StudioStage {
     this.rendererWrap = createStudioRenderer(canvasContainer, { transparent });
 
     buildStudioEnvironment(this.scene, {
-      onTableHeight: (topY) => this.characterManager?.setHostHeight(topY)
+      onTableHeight: (topY) => this.characterManager?.setHostHeight(topY),
+      onChairHeight: (topY) => this.characterManager?.setPlayerHeight(topY)
     });
     this.characterManager = new CharacterManager(this.scene, activeSpotlight);
     this.animController = new CharacterAnimationController(this.characterManager);
