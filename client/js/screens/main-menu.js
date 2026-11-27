@@ -34,6 +34,15 @@ export function renderMainMenu(container, { onNavigate, socket }) {
       </div>
 
       <div class="menu-spacer"></div>
+      <a
+        href="https://saweria.co/vanzidwi"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="saweria-pill"
+      >
+        <span>☕</span>
+        <span>Ada kali <strong>Buat Ngopi</strong></span>
+      </a>
 
       <div class="menu-bottom-dock">
         <div class="dock-meta">6 Pemain &bull; 10 Pertanyaan &bull; Maks 2&times; Lewati</div>
