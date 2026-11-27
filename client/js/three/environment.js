@@ -84,7 +84,7 @@ export function buildStudioEnvironment(scene) {
     new THREE.CylinderGeometry(2.15, 2.05, 0.18, 40),
     new THREE.MeshStandardMaterial({ color: '#4f65b8', roughness: 0.35, metalness: 0.15 })
   );
-  tableTop.position.y = 0.92;
+  tableTop.position.y = 0.42;
   tableTop.castShadow = true;
   tableTop.receiveShadow = true;
   tableFallback.add(tableTop);
@@ -94,19 +94,19 @@ export function buildStudioEnvironment(scene) {
     new THREE.MeshStandardMaterial({ color: '#fbbf24', roughness: 0.25, metalness: 0.55 })
   );
   trim.rotation.x = Math.PI / 2;
-  trim.position.y = 0.96;
+  trim.position.y = 0.46;
   tableFallback.add(trim);
 
   const tableBase = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.55, 0.85, 0.9, 24),
+    new THREE.CylinderGeometry(0.55, 0.85, 0.4, 24),
     new THREE.MeshStandardMaterial({ color: '#334155', roughness: 0.45 })
   );
-  tableBase.position.y = 0.45;
+  tableBase.position.y = 0.2;
   tableBase.castShadow = true;
   tableFallback.add(tableBase);
   group.add(tableFallback);
 
-  // Pembuat kursi fallback
+  // Pembuat kursi fallback untuk 5 Player
   const createFallbackChair = (accentColor) => {
     const chair = new THREE.Group();
     const seatMat = new THREE.MeshStandardMaterial({ color: accentColor, roughness: 0.5 });
@@ -130,13 +130,6 @@ export function buildStudioEnvironment(scene) {
   };
 
   const chairSlots = [];
-  const hostChairSlot = new THREE.Group();
-  hostChairSlot.position.set(0, 0, -0.55);
-  const hostFallbackChair = createFallbackChair('#f59e0b');
-  hostChairSlot.add(hostFallbackChair);
-  group.add(hostChairSlot);
-  chairSlots.push({ container: hostChairSlot, fallback: hostFallbackChair });
-
   for (let slot = 1; slot <= 5; slot += 1) {
     const { x, z, rotY } = getPlayerSlotTransform(slot);
     const slotGroup = new THREE.Group();
@@ -169,7 +162,6 @@ export function buildStudioEnvironment(scene) {
     '/environment/Meja.glb',
     (gltf) => {
       const meja = gltf.scene;
-      // Hapus/sembunyikan mesh "floor" bawaan Meja.glb agar meja kayu bisa diskala penuh
       const toRemove = [];
       meja.traverse((obj) => {
         if ((obj.name || '').toLowerCase() === 'floor') {
