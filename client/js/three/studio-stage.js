@@ -23,7 +23,9 @@ export class StudioStage {
     this.camera = createStudioCamera(width / height);
     this.rendererWrap = createStudioRenderer(canvasContainer, { transparent });
 
-    buildStudioEnvironment(this.scene);
+    buildStudioEnvironment(this.scene, {
+      onTableHeight: (topY) => this.characterManager?.setHostHeight(topY)
+    });
     this.characterManager = new CharacterManager(this.scene, activeSpotlight);
     this.animController = new CharacterAnimationController(this.characterManager);
     this.hostLookController = new HostLookController(this.characterManager);
