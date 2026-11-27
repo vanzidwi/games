@@ -21,9 +21,7 @@ function normalizeModel(root, targetSize, targetAxis = 'maxXZ') {
   root.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(root);
   const size = new THREE.Vector3();
-  const center = new THREE.Vector3();
   box.getSize(size);
-  box.getCenter(center);
 
   const refDim =
     targetAxis === 'y'
@@ -171,13 +169,22 @@ export function buildStudioEnvironment(scene) {
     '/environment/Meja.glb',
     (gltf) => {
       const meja = gltf.scene;
-      normalizeModel(meja, 4.2, 'maxXZ');
+      // Hapus/sembunyikan mesh "floor" bawaan Meja.glb agar meja kayu bisa diskala penuh
+      const toRemove = [];
+      meja.traverse((obj) => {
+        if ((obj.name || '').toLowerCase() === 'floor') {
+          toRemove.push(obj);
+        }
+      });
+      toRemove.forEach((obj) => obj.removeFromParent());
+
+      normalizeModel(meja, 3.8, 'maxXZ');
       tableFallback.visible = false;
       group.add(meja);
     },
     undefined,
-    () => {
-      // Tetap gunakan meja fallback jika Meja.glb belum tersedia
+    (err) => {
+      console.warn('[3D] Gagal memuat Meja.glb:', err);
     }
   );
 
@@ -192,8 +199,8 @@ export function buildStudioEnvironment(scene) {
       });
     },
     undefined,
-    () => {
-      // Tetap gunakan kursi fallback jika Kursi.glb belum tersedia
+    (err) => {
+      console.warn('[3D] Gagal memuat Kursi.glb:', err);
     }
   );
 
