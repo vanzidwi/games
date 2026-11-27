@@ -2,14 +2,15 @@ import * as THREE from 'three';
 
 /**
  * Mengatur arah pandang karakter Host menggunakan rotasi bone neck & head secara lokal
- * dengan interpolasi halus (Quaternion.slerp) dan pembatasan sudut alami.
- * Tidak pernah memutar keseluruhan tubuh Host.
+ * relatif terhadap restQuaternion bone agar kompatibel dengan model GLB (CC_Base/Mixamo)
+ * maupun rig stylized. Tidak pernah memutar keseluruhan tubuh Host.
  */
 export class HostLookController {
   constructor(characterManager) {
     this.characterManager = characterManager;
     this.targetPlayerId = null;
     this.targetWorldPos = new THREE.Vector3();
+    this.hostHeadWorld = new THREE.Vector3();
     this.currentYaw = 0;
     this.currentPitch = 0;
   }
@@ -28,22 +29,19 @@ export class HostLookController {
     if (this.targetPlayerId) {
       const targetChar = this.characterManager.getCharacter(this.targetPlayerId);
       if (targetChar && targetChar.visible) {
-        targetChar.bones.head.getWorldPosition(this.targetWorldPos);
-        const hostHeadWorld = new THREE.Vector3();
-        host.bones.head.getWorldPosition(hostHeadWorld);
+        targetChar.headAnchor.getWorldPosition(this.targetWorldPos);
+        host.headAnchor.getWorldPosition(this.hostHeadWorld);
 
-        const dx = this.targetWorldPos.x - hostHeadWorld.x;
-        const dy = this.targetWorldPos.y - hostHeadWorld.y;
-        const dz = this.targetWorldPos.z - hostHeadWorld.z;
+        const dx = this.targetWorldPos.x - this.hostHeadWorld.x;
+        const dy = this.targetWorldPos.y - this.hostHeadWorld.y;
+        const dz = this.targetWorldPos.z - this.hostHeadWorld.z;
 
-        // Hitung yaw & pitch relatif terhadap arah depan Host (+Z)
         desiredYaw = Math.atan2(dx, dz);
         const horizDist = Math.max(0.1, Math.hypot(dx, dz));
         desiredPitch = -Math.atan2(dy, horizDist);
 
-        // Batasi sudut agar gerakan leher & kepala tetap natural
-        desiredYaw = THREE.MathUtils.clamp(desiredYaw, -1.25, 1.25);
-        desiredPitch = THREE.MathUtils.clamp(desiredPitch, -0.35, 0.35);
+        desiredYaw = THREE.MathUtils.clamp(desiredYaw, -1.15, 1.15);
+        desiredPitch = THREE.MathUtils.clamp(desiredPitch, -0.3, 0.3);
       }
     }
 
@@ -51,15 +49,23 @@ export class HostLookController {
     this.currentYaw = THREE.MathUtils.lerp(this.currentYaw, desiredYaw, lerpFactor);
     this.currentPitch = THREE.MathUtils.lerp(this.currentPitch, desiredPitch, lerpFactor);
 
-    // Bagi rotasi secara natural antara bone neck (40%) dan bone head (60%)
-    const neckQuat = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(this.currentPitch * 0.4, this.currentYaw * 0.4, 0, 'YXZ')
-    );
-    const headQuat = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(this.currentPitch * 0.6, this.currentYaw * 0.6, 0, 'YXZ')
-    );
+    const { neck, head } = host.bones;
 
-    host.bones.neck.quaternion.slerp(neckQuat, 0.85);
-    host.bones.head.quaternion.slerp(headQuat, 0.85);
+    if (neck && neck !== head) {
+      const neckRest = neck.userData.restQuaternion || new THREE.Quaternion();
+      const neckDelta = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(this.currentPitch * 0.4, this.currentYaw * 0.4, 0, 'YXZ')
+      );
+      neck.quaternion.copy(neckRest).multiply(neckDelta);
+    }
+
+    if (head) {
+      const headRest = head.userData.restQuaternion || new THREE.Quaternion();
+      const weight = neck && neck !== head ? 0.6 : 1.0;
+      const headDelta = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(this.currentPitch * weight, this.currentYaw * weight, 0, 'YXZ')
+      );
+      head.quaternion.copy(headRest).multiply(headDelta);
+    }
   }
 }
