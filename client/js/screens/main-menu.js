@@ -41,7 +41,7 @@ export function renderMainMenu(container, { onNavigate, socket }) {
         class="saweria-pill"
       >
         <span>☕</span>
-        <span>Ada kali <strong>Buat Ngopi</strong></span>
+        <span>Sawer boleh kali <strong>via saweria</strong></span>
       </a>
 
       <div class="menu-bottom-dock">
