@@ -3,9 +3,6 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export const PLAYER_RADIUS = 3.5;
 
-/**
- * Menghitung posisi & sudut duduk melingkar untuk 5 Player mengelilingi meja bundar.
- */
 export function getPlayerSlotTransform(slotIndex) {
   const angle = ((slotIndex - 1) / 5) * Math.PI * 2 - Math.PI / 2;
   const x = Math.cos(angle) * PLAYER_RADIUS;
@@ -14,9 +11,6 @@ export function getPlayerSlotTransform(slotIndex) {
   return { x, z, rotY, angle };
 }
 
-/**
- * Menyesuaikan skala & posisi model GLB agar bagian bawah tepat di y=0 dan terpusat di XZ.
- */
 function normalizeModel(root, targetSize, targetAxis = 'maxXZ') {
   root.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(root);
@@ -46,34 +40,28 @@ function normalizeModel(root, targetSize, targetAxis = 'maxXZ') {
       obj.receiveShadow = true;
     }
   });
+
+  root.updateMatrixWorld(true);
+  return new THREE.Box3().setFromObject(root);
 }
 
-/**
- * Membangun lingkungan studio game show 3D stylized cartoon yang terang & cerah,
- * serta memuat aset custom Meja.glb & Kursi.glb dengan fallback otomatis.
- */
-export function buildStudioEnvironment(scene) {
+export function buildStudioEnvironment(scene, { onTableHeight } = {}) {
   const group = new THREE.Group();
 
   // Lantai studio terang
-  const floorGeo = new THREE.CylinderGeometry(11, 11, 0.3, 48);
-  const floorMat = new THREE.MeshStandardMaterial({
-    color: '#3b4f8c',
-    roughness: 0.65,
-    metalness: 0.1
-  });
-  const floor = new THREE.Mesh(floorGeo, floorMat);
+  const floor = new THREE.Mesh(
+    new THREE.CylinderGeometry(11, 11, 0.3, 48),
+    new THREE.MeshStandardMaterial({ color: '#3b4f8c', roughness: 0.65, metalness: 0.1 })
+  );
   floor.position.y = -0.15;
   floor.receiveShadow = true;
   group.add(floor);
 
   // Cincin neon panggung
-  const ringGeo = new THREE.RingGeometry(4.6, 4.86, 64);
-  const ringMat = new THREE.MeshBasicMaterial({
-    color: '#67e8f9',
-    side: THREE.DoubleSide
-  });
-  const ring = new THREE.Mesh(ringGeo, ringMat);
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(4.6, 4.86, 64),
+    new THREE.MeshBasicMaterial({ color: '#67e8f9', side: THREE.DoubleSide })
+  );
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.01;
   group.add(ring);
@@ -84,7 +72,7 @@ export function buildStudioEnvironment(scene) {
     new THREE.CylinderGeometry(2.15, 2.05, 0.18, 40),
     new THREE.MeshStandardMaterial({ color: '#4f65b8', roughness: 0.35, metalness: 0.15 })
   );
-  tableTop.position.y = 0.42;
+  tableTop.position.y = 0.92;
   tableTop.castShadow = true;
   tableTop.receiveShadow = true;
   tableFallback.add(tableTop);
@@ -94,19 +82,19 @@ export function buildStudioEnvironment(scene) {
     new THREE.MeshStandardMaterial({ color: '#fbbf24', roughness: 0.25, metalness: 0.55 })
   );
   trim.rotation.x = Math.PI / 2;
-  trim.position.y = 0.46;
+  trim.position.y = 0.96;
   tableFallback.add(trim);
 
   const tableBase = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.55, 0.85, 0.4, 24),
+    new THREE.CylinderGeometry(0.55, 0.85, 0.9, 24),
     new THREE.MeshStandardMaterial({ color: '#334155', roughness: 0.45 })
   );
-  tableBase.position.y = 0.2;
+  tableBase.position.y = 0.45;
   tableBase.castShadow = true;
   tableFallback.add(tableBase);
   group.add(tableFallback);
 
-  // Pembuat kursi fallback untuk 5 Player
+  // Kursi fallback untuk 5 Player
   const createFallbackChair = (accentColor) => {
     const chair = new THREE.Group();
     const seatMat = new THREE.MeshStandardMaterial({ color: accentColor, roughness: 0.5 });
@@ -155,7 +143,6 @@ export function buildStudioEnvironment(scene) {
     group.add(pillar);
   }
 
-  // Muat custom Meja.glb & Kursi.glb secara asinkron
   const loader = new GLTFLoader();
 
   loader.load(
@@ -170,9 +157,12 @@ export function buildStudioEnvironment(scene) {
       });
       toRemove.forEach((obj) => obj.removeFromParent());
 
-      normalizeModel(meja, 3.8, 'maxXZ');
+      const box = normalizeModel(meja, 3.8, 'maxXZ');
       tableFallback.visible = false;
       group.add(meja);
+
+      scene.userData.tableTopY = box.max.y;
+      onTableHeight?.(box.max.y);
     },
     undefined,
     (err) => {
