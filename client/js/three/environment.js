@@ -48,23 +48,14 @@ function normalizeModel(root, targetSize, targetAxis = 'maxXZ') {
 export function buildStudioEnvironment(scene, { onTableHeight } = {}) {
   const group = new THREE.Group();
 
-  // Lantai studio terang
+  // Lantai studio putih bersih (menerima bayangan lembut)
   const floor = new THREE.Mesh(
-    new THREE.CylinderGeometry(11, 11, 0.3, 48),
-    new THREE.MeshStandardMaterial({ color: '#3b4f8c', roughness: 0.65, metalness: 0.1 })
+    new THREE.CylinderGeometry(16, 16, 0.3, 64),
+    new THREE.MeshStandardMaterial({ color: '#f1f5f9', roughness: 0.85, metalness: 0.02 })
   );
   floor.position.y = -0.15;
   floor.receiveShadow = true;
   group.add(floor);
-
-  // Cincin neon panggung
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(4.6, 4.86, 64),
-    new THREE.MeshBasicMaterial({ color: '#67e8f9', side: THREE.DoubleSide })
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.01;
-  group.add(ring);
 
   // Meja bundar fallback
   const tableFallback = new THREE.Group();
@@ -127,20 +118,6 @@ export function buildStudioEnvironment(scene, { onTableHeight } = {}) {
     slotGroup.add(fbChair);
     group.add(slotGroup);
     chairSlots.push({ container: slotGroup, fallback: fbChair });
-  }
-
-  // Dekorasi pilar lampu studio yang cerah
-  const pillarGeo = new THREE.CylinderGeometry(0.22, 0.22, 5.5, 12);
-  const pillarMat = new THREE.MeshStandardMaterial({
-    color: '#60a5fa',
-    emissive: '#38bdf8',
-    emissiveIntensity: 0.45
-  });
-  for (let i = 0; i < 6; i += 1) {
-    const a = (i / 6) * Math.PI * 2;
-    const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-    pillar.position.set(Math.cos(a) * 8.8, 2.75, Math.sin(a) * 8.8);
-    group.add(pillar);
   }
 
   const loader = new GLTFLoader();
