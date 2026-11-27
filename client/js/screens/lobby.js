@@ -6,58 +6,68 @@ import { soundFX } from '../utils/sound.js';
 export function renderLobby(container, { session, initialState, onLeave }) {
   const isHost = session.role === ROLES.HOST;
   let localPunishments = [...(initialState.punishments || [])];
+  let activeTab = isHost ? 'punishments' : 'players';
 
   container.innerHTML = `
-    <div class="lobby-hud">
-      <header class="hud-top-bar">
+    <div class="lobby-hud lobby-minimal">
+      <header class="lobby-topbar">
         <div class="hud-room-box">
-          <span class="hud-label">KODE ROOM</span>
+          <span class="hud-label">KODE</span>
           <strong id="lobby-room-code" class="room-code-badge">${initialState.roomCode}</strong>
-          <button id="btn-copy-code" class="btn-small" type="button">Salin</button>
-          ${isHost && session.overlayToken ? `<button id="btn-copy-obs" class="btn-small btn-obs" type="button">Salin URL OBS</button>` : ''}
+          <button id="btn-copy-code" class="btn-pill-mini" type="button">Salin</button>
+          ${isHost && session.overlayToken ? `<button id="btn-copy-obs" class="btn-pill-mini btn-obs" type="button">OBS</button>` : ''}
         </div>
-        <button id="btn-leave-room" class="btn-small btn-danger" type="button">Keluar Room</button>
+        <button id="btn-leave-room" class="btn-pill-mini btn-danger" type="button">Keluar</button>
       </header>
 
-      <div class="lobby-grid">
-        <section class="lobby-card">
-          <h3>Daftar Peserta (6 Slot)</h3>
-          <div id="lobby-slots" class="slot-list"></div>
-        </section>
+      <div class="lobby-spacer"></div>
 
-        <section class="lobby-card">
-          <h3>Daftar Hukuman (${GAME_CONFIG.MIN_PUNISHMENTS}–${GAME_CONFIG.MAX_PUNISHMENTS})</h3>
+      <section class="lobby-bottom-dock">
+        <div class="lobby-tabs">
+          <button id="tab-players" class="lobby-tab ${activeTab === 'players' ? 'active' : ''}" type="button">
+            👥 Peserta (<span id="tab-players-count">0/5</span>)
+          </button>
+          <button id="tab-punishments" class="lobby-tab ${activeTab === 'punishments' ? 'active' : ''}" type="button">
+            🎯 Hukuman (<span id="tab-punish-count">0</span>)
+          </button>
+        </div>
+
+        <div id="panel-players" class="lobby-tab-panel ${activeTab === 'players' ? '' : 'hidden'}">
+          <div id="lobby-slots" class="slot-list"></div>
+        </div>
+
+        <div id="panel-punishments" class="lobby-tab-panel ${activeTab === 'punishments' ? '' : 'hidden'}">
           ${
             isHost
               ? `
             <div class="punishment-input-row">
-              <input id="punishment-input" type="text" maxlength="${GAME_CONFIG.MAX_PUNISHMENT_LENGTH}" placeholder="Tulis hukuman (misal: Menyanyi 30 detik)" />
-              <button id="btn-add-punishment" class="btn-small btn-gold" type="button">Tambah</button>
+              <input id="punishment-input" type="text" maxlength="${GAME_CONFIG.MAX_PUNISHMENT_LENGTH}" placeholder="Tambah hukuman (min. 2)..." />
+              <button id="btn-add-punishment" class="btn-small btn-gold" type="button">+</button>
             </div>
             <p id="punishment-error" class="error-text hidden"></p>
           `
-              : `<p class="muted-note">Daftar hukuman diatur oleh Host sebelum permainan dimulai.</p>`
+              : `<p class="muted-note" style="margin-bottom:6px;">Diatur oleh Host sebelum permainan dimulai.</p>`
           }
           <ul id="punishment-list" class="punishment-list"></ul>
-        </section>
-      </div>
+        </div>
 
-      <footer class="lobby-footer">
-        ${
-          isHost
-            ? `
-          <div id="start-blocker" class="blocker-text"></div>
-          <button id="btn-start-game" class="btn-menu btn-gold" type="button" disabled>
-            MULAI PERMAINAN
-          </button>
-        `
-            : `
-          <button id="btn-toggle-ready" class="btn-menu btn-cyan" type="button">
-            SIAP BERMAIN
-          </button>
-        `
-        }
-      </footer>
+        <div class="lobby-dock-footer">
+          ${
+            isHost
+              ? `
+            <div id="start-blocker" class="blocker-text"></div>
+            <button id="btn-start-game" class="btn-dock btn-dock-gold" style="width:100%;" type="button" disabled>
+              MULAI PERMAINAN
+            </button>
+          `
+              : `
+            <button id="btn-toggle-ready" class="btn-dock btn-dock-dark" style="width:100%;" type="button">
+              SIAP BERMAIN
+            </button>
+          `
+          }
+        </div>
+      </section>
     </div>
   `;
 
@@ -67,10 +77,29 @@ export function renderLobby(container, { session, initialState, onLeave }) {
   const copyObsBtn = container.querySelector('#btn-copy-obs');
   const leaveBtn = container.querySelector('#btn-leave-room');
 
+  const tabPlayersBtn = container.querySelector('#tab-players');
+  const tabPunishBtn = container.querySelector('#tab-punishments');
+  const panelPlayers = container.querySelector('#panel-players');
+  const panelPunish = container.querySelector('#panel-punishments');
+  const playersCountEl = container.querySelector('#tab-players-count');
+  const punishCountEl = container.querySelector('#tab-punish-count');
+
+  const switchTab = (tab) => {
+    activeTab = tab;
+    soundFX.click();
+    tabPlayersBtn.classList.toggle('active', tab === 'players');
+    tabPunishBtn.classList.toggle('active', tab === 'punishments');
+    panelPlayers.classList.toggle('hidden', tab !== 'players');
+    panelPunish.classList.toggle('hidden', tab !== 'punishments');
+  };
+
+  tabPlayersBtn.addEventListener('click', () => switchTab('players'));
+  tabPunishBtn.addEventListener('click', () => switchTab('punishments'));
+
   copyCodeBtn.addEventListener('click', () => {
     soundFX.click();
     navigator.clipboard?.writeText(initialState.roomCode).catch(() => {});
-    copyCodeBtn.textContent = 'Tersalin!';
+    copyCodeBtn.textContent = '✓';
     setTimeout(() => (copyCodeBtn.textContent = 'Salin'), 1500);
   });
 
@@ -79,8 +108,8 @@ export function renderLobby(container, { session, initialState, onLeave }) {
       soundFX.click();
       const url = `${window.location.origin}/overlay/${initialState.roomCode}?token=${session.overlayToken}`;
       navigator.clipboard?.writeText(url).catch(() => {});
-      copyObsBtn.textContent = 'URL Tersalin!';
-      setTimeout(() => (copyObsBtn.textContent = 'Salin URL OBS'), 1500);
+      copyObsBtn.textContent = '✓ OBS';
+      setTimeout(() => (copyObsBtn.textContent = 'OBS'), 1500);
     });
   }
 
@@ -144,25 +173,28 @@ export function renderLobby(container, { session, initialState, onLeave }) {
   const updateUI = (state) => {
     localPunishments = [...state.punishments];
 
-    // Render 6 slot
+    const joinedCount = state.players.filter((p) => !p.empty).length;
+    playersCountEl.textContent = `${joinedCount}/5`;
+    punishCountEl.textContent = String(state.punishments.length);
+
     const hostHtml = `
       <div class="slot-row host-row">
-        <span>👑 <strong>${state.host.name}</strong> (Host)</span>
+        <span>👑 <strong>${state.host.name}</strong></span>
         <span class="badge ${state.host.connected ? 'badge-ok' : 'badge-err'}">
-          ${state.host.connected ? 'Terhubung' : 'Terputus'}
+          ${state.host.connected ? 'Online' : 'Putus'}
         </span>
       </div>
     `;
     const playersHtml = state.players
       .map((p) => {
         if (p.empty) {
-          return `<div class="slot-row empty-row"><span>Slot ${p.slotIndex}: Menunggu Player...</span></div>`;
+          return `<div class="slot-row empty-row"><span>P${p.slotIndex}: Kosong</span></div>`;
         }
         return `
           <div class="slot-row">
-            <span>🎮 <strong>${p.name}</strong> (P${p.slotIndex})</span>
+            <span>🎮 <strong>${p.name}</strong></span>
             <span class="badge ${p.ready ? 'badge-ok' : 'badge-warn'}">
-              ${p.ready ? 'SIAP' : 'BELUM SIAP'}
+              ${p.ready ? 'SIAP' : 'BELUM'}
             </span>
           </div>
         `;
@@ -170,7 +202,6 @@ export function renderLobby(container, { session, initialState, onLeave }) {
       .join('');
     slotsEl.innerHTML = hostHtml + playersHtml;
 
-    // Render daftar hukuman
     punishmentListEl.innerHTML = state.punishments.length
       ? state.punishments
           .map(
@@ -180,8 +211,8 @@ export function renderLobby(container, { session, initialState, onLeave }) {
             ${
               isHost
                 ? `<span class="punishment-actions">
-                    <button class="btn-tiny" data-edit="${idx}" type="button">Edit</button>
-                    <button class="btn-tiny btn-danger" data-del="${idx}" type="button">Hapus</button>
+                    <button class="btn-tiny" data-edit="${idx}" type="button">✎</button>
+                    <button class="btn-tiny btn-danger" data-del="${idx}" type="button">✕</button>
                   </span>`
                 : ''
             }
@@ -189,7 +220,7 @@ export function renderLobby(container, { session, initialState, onLeave }) {
         `
           )
           .join('')
-      : `<li class="muted-note">Belum ada hukuman yang ditambahkan.</li>`;
+      : `<li class="muted-note">Belum ada hukuman.</li>`;
 
     if (isHost) {
       punishmentListEl.querySelectorAll('[data-del]').forEach((btn) => {
@@ -216,13 +247,15 @@ export function renderLobby(container, { session, initialState, onLeave }) {
       const startBtn = container.querySelector('#btn-start-game');
       const blockerEl = container.querySelector('#start-blocker');
       startBtn.disabled = !state.canStart;
-      blockerEl.textContent = state.canStart ? 'Semua syarat terpenuhi. Siap dimulai!' : state.startBlockReason;
+      blockerEl.textContent = state.canStart
+        ? 'Semua siap! Tekan Mulai untuk bermain.'
+        : state.startBlockReason;
     } else {
       const me = state.players.find((p) => p.slotIndex === session.slotIndex);
       const readyBtn = container.querySelector('#btn-toggle-ready');
       if (me && readyBtn) {
         readyBtn.textContent = me.ready ? 'BATALKAN SIAP' : 'SIAP BERMAIN';
-        readyBtn.className = `btn-menu ${me.ready ? 'btn-ghost' : 'btn-cyan'}`;
+        readyBtn.className = `btn-dock ${me.ready ? 'btn-ghost' : 'btn-dock-dark'}`;
       }
     }
   };
