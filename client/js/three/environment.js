@@ -45,10 +45,10 @@ function normalizeModel(root, targetSize, targetAxis = 'maxXZ') {
   return new THREE.Box3().setFromObject(root);
 }
 
-export function buildStudioEnvironment(scene, { onTableHeight } = {}) {
+export function buildStudioEnvironment(scene, { onTableHeight, onChairHeight } = {}) {
   const group = new THREE.Group();
 
-  // Lantai studio putih bersih (menerima bayangan lembut)
+  // Lantai studio putih bersih
   const floor = new THREE.Mesh(
     new THREE.CylinderGeometry(16, 16, 0.3, 64),
     new THREE.MeshStandardMaterial({ color: '#f1f5f9', roughness: 0.85, metalness: 0.02 })
@@ -150,12 +150,16 @@ export function buildStudioEnvironment(scene, { onTableHeight } = {}) {
   loader.load(
     '/environment/Kursi.glb',
     (gltf) => {
+      let chairTopY = 0.36;
       chairSlots.forEach(({ container, fallback }) => {
         const kursi = gltf.scene.clone(true);
-        normalizeModel(kursi, 1.05, 'maxXZ');
+        const box = normalizeModel(kursi, 1.05, 'maxXZ');
+        chairTopY = box.max.y;
         fallback.visible = false;
         container.add(kursi);
       });
+      scene.userData.chairTopY = chairTopY;
+      onChairHeight?.(chairTopY);
     },
     undefined,
     (err) => {
