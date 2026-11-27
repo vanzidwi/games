@@ -15,7 +15,7 @@ function createStylizedFallback({ isHost = false, palette }) {
   const modelGroup = new THREE.Group();
 
   const torso = new THREE.Group();
-  torso.position.y = isHost ? 0.05 : 0.72;
+  torso.position.y = 0.05;
   modelGroup.add(torso);
 
   const bodyMat = new THREE.MeshStandardMaterial({
@@ -133,12 +133,7 @@ function loadWithFallbackPaths(loader, paths, onSuccess, onFail) {
       onFail?.(new Error(`Semua path gagal: ${paths.join(', ')}`));
       return;
     }
-    loader.load(
-      paths[idx],
-      onSuccess,
-      undefined,
-      () => tryIndex(idx + 1)
-    );
+    loader.load(paths[idx], onSuccess, undefined, () => tryIndex(idx + 1));
   };
   tryIndex(0);
 }
@@ -150,8 +145,9 @@ export class CharacterManager {
     this.characters = new Map();
 
     const initialTableY = scene.userData.tableTopY || 1.25;
+    const initialChairY = scene.userData.chairTopY || 0.37;
 
-    // Host berada tepat di atas permukaan meja bundar
+    // Host di atas permukaan meja
     this.initCharacterSlot({
       id: 'HOST',
       slotIndex: 0,
@@ -161,14 +157,14 @@ export class CharacterManager {
       visible: true
     });
 
-    // 5 Player mengelilingi meja
+    // 5 Player di atas masing-masing kursi
     for (let slot = 1; slot <= 5; slot += 1) {
       const { x, z, rotY } = getPlayerSlotTransform(slot);
       this.initCharacterSlot({
         id: `P${slot}`,
         slotIndex: slot,
         isHost: false,
-        position: new THREE.Vector3(x, 0, z),
+        position: new THREE.Vector3(x, initialChairY, z),
         rotY,
         visible: false
       });
@@ -184,6 +180,16 @@ export class CharacterManager {
     }
   }
 
+  setPlayerHeight(chairTopY) {
+    if (typeof chairTopY !== 'number') return;
+    for (let slot = 1; slot <= 5; slot += 1) {
+      const char = this.characters.get(`P${slot}`);
+      if (char) {
+        char.root.position.y = chairTopY;
+      }
+    }
+  }
+
   initCharacterSlot({ id, slotIndex, isHost, position, rotY, visible }) {
     const root = new THREE.Group();
     root.position.copy(position);
@@ -196,7 +202,7 @@ export class CharacterManager {
     saveRestPose(fallback.bones);
 
     const headAnchor = new THREE.Object3D();
-    headAnchor.position.set(0, isHost ? 1.4 : 1.78, 0);
+    headAnchor.position.set(0, isHost ? 1.4 : 1.35, 0);
     root.add(headAnchor);
 
     const highlightRing = new THREE.Mesh(
@@ -230,7 +236,6 @@ export class CharacterManager {
   loadCustomModels() {
     const loader = new GLTFLoader();
 
-    // Coba /characters/host.glb, lalu fallback ke /environment/host.glb
     loadWithFallbackPaths(
       loader,
       ['/characters/host.glb', '/environment/host.glb'],
@@ -261,7 +266,6 @@ export class CharacterManager {
       (err) => console.warn('[3D] Gagal memuat host.glb:', err)
     );
 
-    // Coba /characters/player.glb, lalu fallback ke /environment/player.glb
     loadWithFallbackPaths(
       loader,
       ['/characters/player.glb', '/environment/player.glb'],
@@ -271,7 +275,7 @@ export class CharacterManager {
           if (!char) continue;
 
           const model = SkeletonUtils.clone(gltf.scene);
-          const box = normalizeCharacterGLB(model, 1.35, 0.35);
+          const box = normalizeCharacterGLB(model, 1.35, 0);
 
           const neck = findBoneByKeywords(model, ['neck']);
           const head = findBoneByKeywords(model, ['head']) || model;
@@ -280,7 +284,7 @@ export class CharacterManager {
           char.bones = { torso, neck, head, leftArm: null, rightArm: null };
           saveRestPose(char.bones);
           char.eyes = [];
-          char.headAnchor.position.set(0, box.max.y + 0.25, 0);
+          char.headAnchor.position.set(0, box.max.y + 0.15, 0);
 
           char.fallbackGroup.visible = false;
           char.root.add(model);
