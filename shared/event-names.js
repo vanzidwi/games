@@ -11,6 +11,7 @@ export const SOCKET_EVENTS = Object.freeze({
   ROOM_LEAVE: 'room:leave',
   ROOM_STATE: 'room:state',
   PLAYER_READY: 'player:ready',
+  AVATAR_UPDATE: 'avatar:update',
   PUNISHMENT_UPDATE: 'punishment:update',
   GAME_START: 'game:start',
 
