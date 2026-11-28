@@ -15,6 +15,7 @@ export const GAME_STATES = Object.freeze({
 export const ROLES = Object.freeze({
   HOST: 'HOST',
   PLAYER: 'PLAYER',
+  SPECTATOR: 'SPECTATOR',
   OVERLAY: 'OVERLAY'
 });
 
@@ -22,6 +23,11 @@ export const ANSWERS = Object.freeze({
   YES: 'YA',
   NO: 'TIDAK',
   SKIP: 'LEWATI'
+});
+
+export const POLL_OPTIONS = Object.freeze({
+  HONEST: 'JUJUR',
+  LIE: 'BOHONG'
 });
 
 export const GAME_CONFIG = Object.freeze({
