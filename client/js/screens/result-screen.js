@@ -2,6 +2,7 @@ import { GAME_STATES, ROLES } from '@shared/constants.js';
 import { SOCKET_EVENTS } from '@shared/event-names.js';
 import { PunishmentWheel } from '../gameplay/punishment-wheel.js';
 import { socketClient } from '../socket.js';
+import { escapeHtml } from '../utils/escape-html.js';
 import { soundFX } from '../utils/sound.js';
 
 export function renderResultScreen(container, { session, initialState, onExitToMenu }) {
@@ -17,7 +18,7 @@ export function renderResultScreen(container, { session, initialState, onExitToM
           <div class="result-badge">SELAMAT!</div>
           <h1>HOST MENANG!</h1>
           <p>
-            <strong>${initialState.host.name}</strong> berhasil menyelesaikan seluruh 10 pertanyaan
+            <strong>${escapeHtml(initialState.host.name)}</strong> berhasil menyelesaikan seluruh 10 pertanyaan
             dengan total LEWATI <strong>${initialState.gameProgress.skipCount}/${initialState.gameProgress.maxSkips}</strong>.
           </p>
           <button id="btn-back-home" class="btn-menu btn-gold" type="button">Kembali ke Main Menu</button>
@@ -34,7 +35,6 @@ export function renderResultScreen(container, { session, initialState, onExitToM
     return { updateUI: () => {}, onWheelResult: () => {} };
   }
 
-  // Host Kalah -> Tampilkan Roda Hukuman
   soundFX.lose();
   container.innerHTML = `
     <div class="result-overlay">
@@ -84,7 +84,7 @@ export function renderResultScreen(container, { session, initialState, onExitToM
   let spunHandled = false;
 
   const showFinalResult = (text) => {
-    resultBanner.innerHTML = `<span>HUKUMAN TERPILIH:</span><strong>${text}</strong>`;
+    resultBanner.innerHTML = `<span>HUKUMAN TERPILIH:</span><strong>${escapeHtml(text)}</strong>`;
     resultBanner.classList.remove('hidden');
     homeBtn.classList.remove('hidden');
     if (waitNote) waitNote.classList.add('hidden');
