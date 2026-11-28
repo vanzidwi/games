@@ -8,6 +8,7 @@ import {
 } from '@shared/constants.js';
 import { SOCKET_EVENTS } from '@shared/event-names.js';
 import { socketClient } from '../socket.js';
+import { escapeHtml } from '../utils/escape-html.js';
 import { soundFX } from '../utils/sound.js';
 
 export function renderGameplay(container, { session, initialState, stage }) {
@@ -21,7 +22,7 @@ export function renderGameplay(container, { session, initialState, stage }) {
     <div class="gameplay-hud">
       <header class="gp-top-bar">
         <div class="gp-meta">
-          <span class="pill">Room: <strong>${initialState.roomCode}</strong></span>
+          <span class="pill">Room: <strong>${escapeHtml(initialState.roomCode)}</strong></span>
           <span id="gp-round" class="pill">Ronde 1/2</span>
           <span id="gp-progress" class="pill">Pertanyaan 1/10</span>
           <span id="gp-skip" class="pill pill-warn">LEWATI: 0/${GAME_CONFIG.MAX_SKIPS}</span>
@@ -268,8 +269,8 @@ export function renderGameplay(container, { session, initialState, stage }) {
       <div class="status-pill-bar">
         ${
           state.state === GAME_STATES.ANSWERING
-            ? `<strong>${activeName}</strong> sudah bertanya — Menunggu jawaban Host...`
-            : `Giliran bertanya: <strong>${activeName}</strong>`
+            ? `<strong>${escapeHtml(activeName)}</strong> sudah bertanya — Menunggu jawaban Host...`
+            : `Giliran bertanya: <strong>${escapeHtml(activeName)}</strong>`
         }
       </div>
     `;
