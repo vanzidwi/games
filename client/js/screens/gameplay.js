@@ -170,10 +170,10 @@ export function renderGameplay(container, { session, initialState, stage }) {
           <div class="sp-title">${alreadyVoted ? 'Suara tercatat! Menunggu Host...' : 'Menurutmu, Host akan:'}</div>
           <div class="spectator-vote-row">
             <button id="btn-vote-honest" class="btn-vote btn-vote-honest" type="button" ${alreadyVoted ? 'disabled' : ''}>
-              😇 JUJUR!
+               JUJUR!
             </button>
             <button id="btn-vote-lie" class="btn-vote btn-vote-lie" type="button" ${alreadyVoted ? 'disabled' : ''}>
-              😈 BOHONG!
+               BOHONG!
             </button>
           </div>
         </div>
