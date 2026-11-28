@@ -41,7 +41,7 @@ export function renderMainMenu(container, { onNavigate, socket }) {
         class="saweria-pill"
       >
         <span>☕</span>
-        <span>Sawer boleh kali <strong>via saweria</strong></span>
+        <span>Bisa kali sawer developer <strong>via saweria</strong></span>
       </a>
 
       <div class="menu-bottom-dock">
