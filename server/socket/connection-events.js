@@ -18,7 +18,7 @@ export function registerConnectionEvents(io, socket) {
     else socket.emit(SOCKET_EVENTS.SYSTEM_PONG, response);
   });
 
-  // Reconnect sesi Host atau Player menggunakan sessionToken
+  // Reconnect sesi Host, Player, atau Spectator menggunakan sessionToken
   socket.on(SOCKET_EVENTS.SESSION_RECONNECT, (payload = {}, callback) => {
     const reply = typeof callback === 'function' ? callback : () => {};
     const { roomCode, sessionToken } = payload;
@@ -36,7 +36,7 @@ export function registerConnectionEvents(io, socket) {
     if (room.host.sessionToken === sessionToken) {
       room.host.socketId = socket.id;
       room.host.connected = true;
-      roomManager.bindSocket(socket.id, room.roomCode, ROLES.HOST, 0);
+      roomManager.bindSocket(socket.id, room.roomCode, ROLES.HOST, 0, sessionToken);
       socket.join(room.roomCode);
 
       if (room.pausedByHostDisconnect) {
@@ -44,7 +44,6 @@ export function registerConnectionEvents(io, socket) {
         room.pausedByHostDisconnect = false;
         room.hostDisconnectDeadline = null;
 
-        // Lanjutkan timer pertanyaan jika sedang berada pada fase ASKING
         if (room.state === GAME_STATES.ASKING && room.pausedRemainingQuestionMs > 0) {
           const remaining = room.pausedRemainingQuestionMs;
           room.pausedRemainingQuestionMs = null;
@@ -86,7 +85,7 @@ export function registerConnectionEvents(io, socket) {
     if (player) {
       player.socketId = socket.id;
       player.connected = true;
-      roomManager.bindSocket(socket.id, room.roomCode, ROLES.PLAYER, player.slotIndex);
+      roomManager.bindSocket(socket.id, room.roomCode, ROLES.PLAYER, player.slotIndex, sessionToken);
       socket.join(room.roomCode);
 
       const state = roomManager.serializeRoomState(room);
@@ -100,10 +99,29 @@ export function registerConnectionEvents(io, socket) {
       });
     }
 
+    // Cek Spectator
+    const spectator = room.spectators.get(sessionToken);
+    if (spectator) {
+      spectator.socketId = socket.id;
+      spectator.connected = true;
+      roomManager.bindSocket(socket.id, room.roomCode, ROLES.SPECTATOR, -1, sessionToken);
+      socket.join(room.roomCode);
+
+      const state = roomManager.serializeRoomState(room);
+      io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, state);
+      return reply({
+        ok: true,
+        role: ROLES.SPECTATOR,
+        slotIndex: -1,
+        roomCode: room.roomCode,
+        state
+      });
+    }
+
     return reply({ ok: false, error: 'Token sesi tidak valid.' });
   });
 
-  // Penanganan disconnect Host & Player
+  // Penanganan disconnect Host, Player, & Spectator
   socket.on('disconnect', (reason) => {
     console.log(`[SOCKET] Client terputus: ${socket.id} (${reason})`);
     const binding = roomManager.unbindSocket(socket.id);
@@ -113,6 +131,17 @@ export function registerConnectionEvents(io, socket) {
     if (!room) return;
 
     if (binding.role === ROLES.OVERLAY) {
+      return;
+    }
+
+    if (binding.role === ROLES.SPECTATOR) {
+      if (binding.sessionToken) {
+        const spectator = room.spectators.get(binding.sessionToken);
+        if (spectator) {
+          spectator.connected = false;
+          io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
+        }
+      }
       return;
     }
 
@@ -126,7 +155,6 @@ export function registerConnectionEvents(io, socket) {
         return;
       }
 
-      // Pause permainan selama 60 detik untuk Host reconnect
       room.pausedByHostDisconnect = true;
       if (room.state === GAME_STATES.ASKING && room.gameProgress.questionDeadline) {
         room.pausedRemainingQuestionMs = Math.max(
@@ -179,7 +207,6 @@ export function registerConnectionEvents(io, socket) {
         playerId: player.id
       });
 
-      // Jika Player disconnect saat giliran aktifnya (ASKING), hentikan timer & lanjut ke Player berikutnya
       if (
         room.state === GAME_STATES.ASKING &&
         room.gameProgress.activeSlot === player.slotIndex &&
