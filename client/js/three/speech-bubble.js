@@ -140,7 +140,9 @@ export class SpeechBubbleOverlay {
         const pos = this.projectToScreen(targetChar.headAnchor, 0.25);
         if (pos.visible) {
           this.bubbleEl.classList.remove('hidden');
-          const clampedX = Math.max(110, Math.min((this.container.clientWidth || window.innerWidth) - 110, pos.x));
+          const viewW = this.container.clientWidth || window.innerWidth;
+          const halfW = Math.min(320, viewW * 0.78) / 2 + 10;
+          const clampedX = Math.max(halfW, Math.min(viewW - halfW, pos.x));
           const clampedY = Math.max(90, pos.y);
           this.bubbleEl.style.transform = `translate3d(${clampedX}px, ${clampedY}px, 0) translate(-50%, -100%)`;
         } else {
