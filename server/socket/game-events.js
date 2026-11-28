@@ -1,4 +1,4 @@
-import { ANSWERS, GAME_CONFIG, GAME_STATES, ROLES } from '../../shared/constants.js';
+import { ANSWERS, GAME_CONFIG, GAME_STATES, POLL_OPTIONS, ROLES } from '../../shared/constants.js';
 import { SOCKET_EVENTS } from '../../shared/event-names.js';
 import { transitionGameState } from '../game/game-state.js';
 import { RateLimiter, validateQuestion } from '../game/validators.js';
@@ -9,9 +9,6 @@ import { turnManager } from '../managers/turn-manager.js';
 
 const actionLimiter = new RateLimiter();
 
-/**
- * Memulai giliran berikutnya atau menyelesaikan permainan jika seluruh 10 giliran telah selesai.
- */
 export function startNextTurn(io, room) {
   if (
     room.state === GAME_STATES.HOST_LOST ||
@@ -23,6 +20,14 @@ export function startNextTurn(io, room) {
   }
 
   timerManager.clearQuestionTimer(room.roomCode);
+
+  // Reset polling penonton setiap pergantian giliran
+  room.gameProgress.poll = {
+    active: false,
+    honestCount: 0,
+    lieCount: 0,
+    voters: new Set()
+  };
 
   const next = turnManager.advanceToNextValidTurn(room);
   if (next.done) {
@@ -116,6 +121,14 @@ export function registerGameEvents(io, socket) {
     room.gameProgress.currentQuestion = validation.value;
     room.gameProgress.answerLocked = false;
 
+    // Aktifkan polling penonton (Jujur vs Bohong!) saat pertanyaan masuk fase ANSWERING
+    room.gameProgress.poll = {
+      active: true,
+      honestCount: 0,
+      lieCount: 0,
+      voters: new Set()
+    };
+
     transitionGameState(room, GAME_STATES.ANSWERING);
 
     io.to(room.roomCode).emit(SOCKET_EVENTS.QUESTION_RECEIVED, {
@@ -131,6 +144,59 @@ export function registerGameEvents(io, socket) {
 
     io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
     return reply({ ok: true });
+  });
+
+  // Penonton (atau player yang berstatus spectatorOnly) mengirim vote Jujur/Bohong
+  socket.on(SOCKET_EVENTS.POLL_VOTE, (payload = {}, callback) => {
+    const reply = typeof callback === 'function' ? callback : () => {};
+    if (!actionLimiter.allow(`${socket.id}:poll`, 4, 3000)) {
+      return reply({ ok: false, error: 'Terlalu cepat.' });
+    }
+
+    const binding = roomManager.getSocketBinding(socket.id);
+    if (!binding) return reply({ ok: false, error: 'Tidak terhubung ke room.' });
+
+    const room = roomManager.getRoom(binding.roomCode);
+    if (!room) return reply({ ok: false, error: 'Room tidak ditemukan.' });
+
+    const isSpectator = binding.role === ROLES.SPECTATOR;
+    const isSpectatorPlayer =
+      binding.role === ROLES.PLAYER && room.players[binding.slotIndex - 1]?.spectatorOnly;
+
+    if (!isSpectator && !isSpectatorPlayer) {
+      return reply({ ok: false, error: 'Polling hanya untuk Penonton.' });
+    }
+
+    const poll = room.gameProgress.poll;
+    if (!poll.active) {
+      return reply({ ok: false, error: 'Polling belum dibuka.' });
+    }
+
+    const voterKey = binding.sessionToken || socket.id;
+    if (poll.voters.has(voterKey)) {
+      return reply({ ok: false, error: 'Anda sudah memilih pada pertanyaan ini.' });
+    }
+
+    if (payload.option === POLL_OPTIONS.HONEST) {
+      poll.honestCount += 1;
+    } else if (payload.option === POLL_OPTIONS.LIE) {
+      poll.lieCount += 1;
+    } else {
+      return reply({ ok: false, error: 'Pilihan polling tidak valid.' });
+    }
+
+    poll.voters.add(voterKey);
+
+    const summary = {
+      active: poll.active,
+      honestCount: poll.honestCount,
+      lieCount: poll.lieCount,
+      totalVotes: poll.honestCount + poll.lieCount
+    };
+
+    io.to(room.roomCode).emit(SOCKET_EVENTS.POLL_UPDATE, summary);
+    io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
+    return reply({ ok: true, poll: summary });
   });
 
   // Host mengirim jawaban (YA / TIDAK / LEWATI)
@@ -159,7 +225,6 @@ export function registerGameEvents(io, socket) {
       return reply({ ok: false, error: 'Pilihan jawaban tidak valid.' });
     }
 
-    // Kunci jawaban segera untuk mencegah double-click / jawaban ganda
     room.gameProgress.answerLocked = true;
     room.gameProgress.lastAnswer = answer;
 
@@ -182,9 +247,9 @@ export function registerGameEvents(io, socket) {
         maxSkips: GAME_CONFIG.MAX_SKIPS
       });
 
-      // Revisi: LEWATI ke-2 = Host langsung kalah!
       if (room.gameProgress.skipCount >= GAME_CONFIG.MAX_SKIPS) {
         room.gameProgress.currentQuestion = null;
+        room.gameProgress.poll.active = false;
         transitionGameState(room, GAME_STATES.HOST_LOST);
         transitionGameState(room, GAME_STATES.WHEEL_READY);
 
@@ -222,13 +287,12 @@ export function registerGameEvents(io, socket) {
 
     io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
 
-    // Jeda singkat agar animasi mengangguk/menggeleng & fade-out bubble terlihat sebelum giliran berikutnya
     setTimeout(() => {
       const latestRoom = roomManager.getRoom(room.roomCode);
       if (latestRoom && latestRoom.state === GAME_STATES.ANSWERING && !latestRoom.pausedByHostDisconnect) {
         startNextTurn(io, latestRoom);
       }
-    }, 1500);
+    }, 1800);
 
     return reply({ ok: true, hostLost: false });
   });
