@@ -5,7 +5,7 @@ import { timerManager } from './timer-manager.js';
 export class RoomManager {
   constructor() {
     this.rooms = new Map();
-    this.socketIndex = new Map(); // socketId -> { roomCode, role, slotIndex }
+    this.socketIndex = new Map(); // socketId -> { roomCode, role, slotIndex, sessionToken }
   }
 
   createRoom(hostName, hostSocketId) {
@@ -30,6 +30,7 @@ export class RoomManager {
         connected: true
       },
       players: Array(GAME_CONFIG.MAX_PLAYERS).fill(null),
+      spectators: new Map(), // sessionToken -> { name, sessionToken, socketId, connected }
       punishments: [],
       gameProgress: {
         round: 1,
@@ -44,12 +45,18 @@ export class RoomManager {
         lastAnswer: null,
         answerLocked: false,
         wheelResult: null,
-        wheelSpun: false
+        wheelSpun: false,
+        poll: {
+          active: false,
+          honestCount: 0,
+          lieCount: 0,
+          voters: new Set()
+        }
       }
     };
 
     this.rooms.set(roomCode, room);
-    this.bindSocket(hostSocketId, roomCode, ROLES.HOST, 0);
+    this.bindSocket(hostSocketId, roomCode, ROLES.HOST, 0, hostToken);
 
     return { room, sessionToken: hostToken };
   }
@@ -59,8 +66,8 @@ export class RoomManager {
     return this.rooms.get(String(roomCode).trim().toUpperCase()) || null;
   }
 
-  bindSocket(socketId, roomCode, role, slotIndex = 0) {
-    this.socketIndex.set(socketId, { roomCode, role, slotIndex });
+  bindSocket(socketId, roomCode, role, slotIndex = 0, sessionToken = null) {
+    this.socketIndex.set(socketId, { roomCode, role, slotIndex, sessionToken });
   }
 
   unbindSocket(socketId) {
@@ -73,6 +80,27 @@ export class RoomManager {
     return this.socketIndex.get(socketId) || null;
   }
 
+  addSpectator(room, name, socketId) {
+    const sessionToken = generateSessionToken();
+    const spectator = {
+      name,
+      sessionToken,
+      socketId,
+      connected: true
+    };
+    room.spectators.set(sessionToken, spectator);
+    this.bindSocket(socketId, room.roomCode, ROLES.SPECTATOR, -1, sessionToken);
+    return spectator;
+  }
+
+  getConnectedSpectatorCount(room) {
+    let count = 0;
+    for (const s of room.spectators.values()) {
+      if (s.connected) count += 1;
+    }
+    return count;
+  }
+
   deleteRoom(roomCode) {
     timerManager.clearAllForRoom(roomCode);
     const room = this.rooms.get(roomCode);
@@ -81,13 +109,13 @@ export class RoomManager {
       for (const p of room.players) {
         if (p?.socketId) this.socketIndex.delete(p.socketId);
       }
+      for (const s of room.spectators.values()) {
+        if (s.socketId) this.socketIndex.delete(s.socketId);
+      }
     }
     this.rooms.delete(roomCode);
   }
 
-  /**
-   * Memperbarui state lobby antara WAITING dan LOBBY_READY secara otomatis.
-   */
   syncLobbyReadyState(room) {
     if (room.state !== GAME_STATES.WAITING && room.state !== GAME_STATES.LOBBY_READY) {
       return;
@@ -96,11 +124,10 @@ export class RoomManager {
     room.state = check.ok ? GAME_STATES.LOBBY_READY : GAME_STATES.WAITING;
   }
 
-  /**
-   * Menyusun state publik room yang aman dikirim ke semua client (tanpa sessionToken).
-   */
   serializeRoomState(room) {
     const startCheck = canStartGame(room);
+    const poll = room.gameProgress.poll;
+    const totalVotes = poll.honestCount + poll.lieCount;
 
     return {
       roomCode: room.roomCode,
@@ -109,6 +136,7 @@ export class RoomManager {
       hostDisconnectDeadline: room.hostDisconnectDeadline,
       canStart: startCheck.ok,
       startBlockReason: startCheck.ok ? null : startCheck.reason,
+      spectatorCount: this.getConnectedSpectatorCount(room),
       host: {
         id: room.host.id,
         name: room.host.name,
@@ -145,7 +173,13 @@ export class RoomManager {
         maxSkips: GAME_CONFIG.MAX_SKIPS,
         lastAnswer: room.gameProgress.lastAnswer,
         wheelResult: room.gameProgress.wheelResult,
-        wheelSpun: room.gameProgress.wheelSpun
+        wheelSpun: room.gameProgress.wheelSpun,
+        poll: {
+          active: poll.active,
+          honestCount: poll.honestCount,
+          lieCount: poll.lieCount,
+          totalVotes
+        }
       }
     };
   }
