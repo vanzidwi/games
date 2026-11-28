@@ -76,6 +76,7 @@ function initApp() {
       stage.characterManager.showAllPreview();
       stage.speechOverlay.syncNameplates(null);
       stage.speechOverlay.hideQuestion();
+      stage.speechOverlay.hideHostAnswer();
       stage.hostLookController.setTargetPlayer(null);
       activeScreenController = renderMainMenu(uiRoot, {
         onNavigate: navigate,
@@ -184,10 +185,12 @@ function initApp() {
       state.state === GAME_STATES.FINISHED
     ) {
       stage.speechOverlay.hideQuestion();
+      stage.speechOverlay.hideHostAnswer();
       if (currentScreenName !== 'result') navigate('result', { initialState: state });
       else activeScreenController?.updateUI?.(state);
     } else if (state.state === GAME_STATES.CANCELLED) {
       stage.speechOverlay.hideQuestion();
+      stage.speechOverlay.hideHostAnswer();
       socketClient.clearSession();
       currentSession = null;
       window.alert('Pertandingan dibatalkan karena Host keluar atau tidak kembali tepat waktu.');
@@ -195,7 +198,7 @@ function initApp() {
     }
   });
 
-    socket.on(SOCKET_EVENTS.QUESTION_RECEIVED, ({ activePlayerId, question }) => {
+  socket.on(SOCKET_EVENTS.QUESTION_RECEIVED, ({ activePlayerId, question }) => {
     soundFX.question();
     stage.speechOverlay.showQuestion(activePlayerId, activePlayerId, question);
     if (currentSession?.role === ROLES.HOST) {
@@ -203,17 +206,24 @@ function initApp() {
     }
   });
 
-
   socket.on(SOCKET_EVENTS.ANSWER_RESULT, ({ answer }) => {
     if (answer === ANSWERS.YES) soundFX.answerYes();
     else if (answer === ANSWERS.NO) soundFX.answerNo();
     else soundFX.answerSkip();
 
     stage.speechOverlay.hideQuestion();
+    if (answer === ANSWERS.YES || answer === ANSWERS.NO) {
+      stage.speechOverlay.showHostAnswer(answer);
+    }
+  });
+
+  socket.on(SOCKET_EVENTS.TURN_START, () => {
+    stage.speechOverlay.hideHostAnswer();
   });
 
   socket.on(SOCKET_EVENTS.GAME_TURN_CHANGED, () => {
     stage.speechOverlay.hideQuestion();
+    stage.speechOverlay.hideHostAnswer();
   });
 
   socket.on(SOCKET_EVENTS.CHARACTER_ANIMATION, ({ targetId, animation }) => {
@@ -261,6 +271,7 @@ function initApp() {
       const wasInRoom = Boolean(currentSession || currentScreenName !== 'main-menu');
       currentSession = null;
       stage.speechOverlay.hideQuestion();
+      stage.speechOverlay.hideHostAnswer();
       if (wasInRoom) {
         window.alert(res.error || 'Sesi room telah berakhir atau server baru saja dimulai ulang.');
         navigate('main-menu');
