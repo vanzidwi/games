@@ -3,9 +3,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { Server } from 'socket.io';
+import { roomManager } from './managers/room-manager.js';
 import { registerConnectionEvents } from './socket/connection-events.js';
 import { registerGameEvents } from './socket/game-events.js';
-import { roomManager } from './managers/room-manager.js';
 import { registerRoomEvents } from './socket/room-events.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -15,7 +15,7 @@ const ROOT_DIR = path.resolve(__dirname, '..');
 const PORT = Number(process.env.PORT) || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
-// Izinkan origin Vercel / frontend eksternal via env CLIENT_ORIGIN (dipisah koma)
+// Hanya izinkan origin yang terdaftar di CLIENT_ORIGIN (dipisah koma)
 const allowedOrigins = process.env.CLIENT_ORIGIN
   ? process.env.CLIENT_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean)
   : ['http://localhost:5173', 'http://127.0.0.1:5173'];
@@ -27,11 +27,7 @@ const io = new Server(httpServer, {
   cors: {
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      // Izinkan preview & production domain Vercel secara otomatis jika diaktifkan
-      if (origin.endsWith('.vercel.app')) {
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
       return callback(null, false);
@@ -48,7 +44,7 @@ app.use(express.json());
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
-    game: 'JAWAB ATAU HUKUMAN!',
+    game: 'PASTI GUA JAWAB!',
     timestamp: Date.now(),
     connectedClients: io.engine.clientsCount
   });
@@ -72,6 +68,6 @@ io.on('connection', (socket) => {
 });
 
 httpServer.listen(PORT, () => {
-  console.log(`[SERVER] JAWAB ATAU HUKUMAN! berjalan di port ${PORT}`);
+  console.log(`[SERVER] PASTI GUA JAWAB! berjalan di port ${PORT}`);
   console.log(`[SERVER] Mode: ${IS_PRODUCTION ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 });
