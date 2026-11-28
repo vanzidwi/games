@@ -5,6 +5,7 @@ import express from 'express';
 import { Server } from 'socket.io';
 import { registerConnectionEvents } from './socket/connection-events.js';
 import { registerGameEvents } from './socket/game-events.js';
+import { roomManager } from './managers/room-manager.js';
 import { registerRoomEvents } from './socket/room-events.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,6 +30,7 @@ const io = new Server(httpServer, {
       if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
+      // Izinkan preview & production domain Vercel secara otomatis jika diaktifkan
       if (origin.endsWith('.vercel.app')) {
         return callback(null, true);
       }
@@ -60,6 +62,8 @@ if (IS_PRODUCTION) {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }
+
+setInterval(() => roomManager.cleanupExpiredRooms(io), 60000);
 
 io.on('connection', (socket) => {
   registerConnectionEvents(io, socket);
