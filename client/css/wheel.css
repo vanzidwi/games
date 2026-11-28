@@ -6,12 +6,14 @@
   justify-content: center;
   padding: 16px;
   background: rgba(12, 16, 38, 0.75);
+  overflow-y: auto;
 }
 
 .result-card,
 .wheel-stage-card {
   width: 100%;
   max-width: 480px;
+  margin: auto;
   background: var(--surface-card);
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-lg);
@@ -43,7 +45,7 @@
 
 .win-card p {
   color: #cbd5e1;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   line-height: 1.5;
 }
 
@@ -84,4 +86,86 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* Rekap Pertanyaan & Polling */
+.recap-box {
+  text-align: left;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.recap-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+  margin-bottom: 8px;
+}
+
+.recap-list {
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.recap-item {
+  background: rgba(30, 41, 59, 0.7);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.recap-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.recap-player {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.recap-ans {
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.recap-ans.ans-yes {
+  background: rgba(16, 185, 129, 0.22);
+  color: #6ee7b7;
+}
+
+.recap-ans.ans-no {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fca5a5;
+}
+
+.recap-ans.ans-skip {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fde68a;
+}
+
+.recap-q {
+  font-size: 0.84rem;
+  color: #f8fafc;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.recap-poll {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #cbd5e1;
 }
