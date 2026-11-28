@@ -49,7 +49,8 @@ export class RoomManager {
         name: hostName,
         sessionToken: hostToken,
         socketId: hostSocketId,
-        connected: true
+        connected: true,
+        avatar: { color: '#dc2626', accessory: 'crown' }
       },
       players: Array(GAME_CONFIG.MAX_PLAYERS).fill(null),
       spectators: new Map(),
@@ -222,7 +223,8 @@ export class RoomManager {
       host: {
         id: room.host.id,
         name: room.host.name,
-        connected: room.host.connected
+        connected: room.host.connected,
+        avatar: room.host.avatar
       },
       players: room.players.map((p, idx) =>
         p
@@ -232,7 +234,8 @@ export class RoomManager {
               name: p.name,
               ready: p.ready,
               connected: p.connected,
-              spectatorOnly: p.spectatorOnly
+              spectatorOnly: p.spectatorOnly,
+              avatar: p.avatar
             }
           : {
               id: `P${idx + 1}`,
