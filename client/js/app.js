@@ -195,10 +195,14 @@ function initApp() {
     }
   });
 
-  socket.on(SOCKET_EVENTS.QUESTION_RECEIVED, ({ activePlayerId, question }) => {
+    socket.on(SOCKET_EVENTS.QUESTION_RECEIVED, ({ activePlayerId, question }) => {
     soundFX.question();
     stage.speechOverlay.showQuestion(activePlayerId, activePlayerId, question);
+    if (currentSession?.role === ROLES.HOST) {
+      stage.focusOnPlayer(activePlayerId);
+    }
   });
+
 
   socket.on(SOCKET_EVENTS.ANSWER_RESULT, ({ answer }) => {
     if (answer === ANSWERS.YES) soundFX.answerYes();
