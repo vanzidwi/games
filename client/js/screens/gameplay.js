@@ -119,8 +119,8 @@ export function renderGameplay(container, { session, initialState, stage }) {
     const honestPct = total ? Math.round((poll.honestCount / total) * 100) : 50;
     const liePct = total ? 100 - honestPct : 50;
 
-    pollHonestLabel.textContent = `😇 ${total ? `${honestPct}%` : '0%'}`;
-    pollLieLabel.textContent = `😈 ${total ? `${liePct}%` : '0%'}`;
+    pollHonestLabel.textContent = `Jujur ${total ? `${honestPct}%` : '0%'}`;
+    pollLieLabel.textContent = `Bohong ${total ? `${liePct}%` : '0%'}`;
     pollTotalLabel.textContent = `${total} suara`;
     pollFillHonest.style.width = `${honestPct}%`;
     pollFillLie.style.width = `${liePct}%`;
