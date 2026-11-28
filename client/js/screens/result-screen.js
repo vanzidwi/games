@@ -22,7 +22,7 @@ function renderRecapHtml(history = []) {
       if (total > 0) {
         const honestPct = Math.round((item.poll.honestCount / total) * 100);
         const liePct = 100 - honestPct;
-        pollHtml = `<div class="recap-poll">😇 Jujur ${honestPct}% · 😈 Bohong ${liePct}% (${total} suara)</div>`;
+        pollHtml = `<div class="recap-poll">Jujur ${honestPct}% · Bohong ${liePct}% (${total} suara)</div>`;
       }
 
       return `
