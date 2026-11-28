@@ -80,6 +80,13 @@ export class StudioStage {
     }
   }
 
+  focusOnPlayer(playerId) {
+    const char = this.characterManager.getCharacter(playerId);
+    if (char && this.cameraControls) {
+      this.cameraControls.focusOnCharacter(char);
+    }
+  }
+
   resetCamera() {
     if (this.cameraControls) {
       this.cameraControls.reset();
