@@ -85,8 +85,8 @@ export class CameraController {
     } else {
       dir.normalize();
     }
-    this.transitionPos = new THREE.Vector3(-dir.x * 2.6, p.y + 3.0, -dir.z * 2.6);
-    this.transitionTarget = new THREE.Vector3(p.x, p.y + 1.35, p.z);
+    this.transitionPos = new THREE.Vector3(-dir.x * 8.2, 6.0, -dir.z * 8.2);
+    this.transitionTarget = new THREE.Vector3(p.x * 0.45, 1.35, p.z * 0.45);
   }
 
   update() {
