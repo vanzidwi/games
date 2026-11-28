@@ -1,4 +1,4 @@
-import { GAME_CONFIG } from '../../shared/constants.js';
+import { AVATAR_COLORS, GAME_CONFIG } from '../../shared/constants.js';
 import { generateSessionToken } from '../game/game-rules.js';
 
 export class PlayerManager {
@@ -24,7 +24,11 @@ export class PlayerManager {
       socketId,
       ready: false,
       connected: true,
-      spectatorOnly: false
+      spectatorOnly: false,
+      avatar: {
+        color: AVATAR_COLORS[(slotNumber % (AVATAR_COLORS.length - 1)) + 1] || '#3b82f6',
+        accessory: 'none'
+      }
     };
 
     room.players[emptyIndex] = player;
