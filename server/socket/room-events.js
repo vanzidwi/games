@@ -62,12 +62,20 @@ export function registerRoomEvents(io, socket) {
     }
 
     if (room.state !== GAME_STATES.WAITING && room.state !== GAME_STATES.LOBBY_READY) {
-      return reply({ ok: false, error: 'Pertandingan sudah dimulai. Tidak dapat bergabung.' });
+      return reply({
+        ok: false,
+        canSpectate: true,
+        error: 'Pertandingan sudah dimulai. Anda bisa masuk sebagai Penonton.'
+      });
     }
 
     const added = playerManager.addPlayer(room, nameCheck.value, socket.id);
     if (!added.ok) {
-      return reply({ ok: false, error: added.error });
+      return reply({
+        ok: false,
+        canSpectate: true,
+        error: `${added.error} Anda bisa masuk sebagai Penonton.`
+      });
     }
 
     roomManager.bindSocket(socket.id, room.roomCode, ROLES.PLAYER, added.player.slotIndex);
@@ -83,6 +91,44 @@ export function registerRoomEvents(io, socket) {
       role: ROLES.PLAYER,
       slotIndex: added.player.slotIndex,
       sessionToken: added.player.sessionToken,
+      state
+    });
+  });
+
+  // Gabung Room sebagai Penonton (Spectator)
+  socket.on(SOCKET_EVENTS.SPECTATOR_JOIN, (payload = {}, callback) => {
+    const reply = typeof callback === 'function' ? callback : () => {};
+    if (!roomLimiter.allow(`${socket.id}:spectate`, 6, 10000)) {
+      return reply({ ok: false, error: 'Terlalu banyak percobaan bergabung.' });
+    }
+
+    const nameCheck = validateDisplayName(payload.playerName);
+    if (!nameCheck.valid) {
+      return reply({ ok: false, error: nameCheck.error });
+    }
+
+    const codeCheck = validateRoomCode(payload.roomCode);
+    if (!codeCheck.valid) {
+      return reply({ ok: false, error: codeCheck.error });
+    }
+
+    const room = roomManager.getRoom(codeCheck.value);
+    if (!room || room.state === GAME_STATES.CANCELLED || room.state === GAME_STATES.FINISHED) {
+      return reply({ ok: false, error: 'Room tidak ditemukan atau sudah berakhir.' });
+    }
+
+    const spectator = roomManager.addSpectator(room, nameCheck.value, socket.id);
+    socket.join(room.roomCode);
+
+    const state = roomManager.serializeRoomState(room);
+    io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, state);
+
+    return reply({
+      ok: true,
+      roomCode: room.roomCode,
+      role: ROLES.SPECTATOR,
+      slotIndex: -1,
+      sessionToken: spectator.sessionToken,
       state
     });
   });
@@ -146,6 +192,9 @@ export function registerRoomEvents(io, socket) {
           io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
         }
       }
+    } else if (binding.role === ROLES.SPECTATOR && binding.sessionToken) {
+      room.spectators.delete(binding.sessionToken);
+      io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
     }
 
     return reply({ ok: true });
