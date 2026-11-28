@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 12px 16px 18px;
   pointer-events: none;
 }
 
@@ -32,11 +32,12 @@
 }
 
 .pill {
-  background: var(--surface-card);
-  border: 1px solid var(--surface-border);
+  background: rgba(15, 23, 42, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 0.84rem;
+  padding: 5px 11px;
+  font-size: 0.8rem;
+  backdrop-filter: blur(10px);
 }
 
 .pill-warn {
@@ -52,14 +53,15 @@
 }
 
 .btn-cam {
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--surface-border);
-  background: rgba(15, 23, 42, 0.78);
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(15, 23, 42, 0.8);
   color: var(--text-primary);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 600;
   cursor: pointer;
+  backdrop-filter: blur(8px);
 }
 
 .btn-cam.active {
@@ -79,35 +81,36 @@
 
 .gp-turn-banner {
   background: rgba(15, 23, 42, 0.82);
-  border: 1px solid var(--surface-border);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
-  padding: 6px 16px;
-  font-size: 0.9rem;
+  padding: 5px 15px;
+  font-size: 0.86rem;
   font-weight: 600;
+  backdrop-filter: blur(10px);
 }
 
 /* Live Polling Penonton */
 .gp-poll-bar {
   width: 100%;
-  max-width: 360px;
+  max-width: 340px;
   background: rgba(15, 23, 42, 0.86);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 14px;
   padding: 8px 12px;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
 }
 
 .poll-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 0.76rem;
+  font-size: 0.75rem;
   font-weight: 700;
   margin-bottom: 5px;
 }
 
 .poll-track {
   display: flex;
-  height: 8px;
+  height: 7px;
   border-radius: 999px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.12);
@@ -125,33 +128,47 @@
 
 .gp-bottom-area {
   width: 100%;
-  max-width: 680px;
+  max-width: 520px;
   margin: auto auto 0 auto;
 }
 
-/* 3 Tombol Jawaban Besar Khusus Host */
+/* 3 Tombol Jawaban Minimalis Khusus Host (Glass Pill Dock) */
+.host-answer-dock {
+  max-width: 440px;
+  margin: 0 auto;
+  background: rgba(15, 23, 42, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  padding: 8px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.35);
+}
+
 .host-answer-bar {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 
 .btn-answer {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 16px 10px;
+  gap: 7px;
+  padding: 13px 10px;
   border: none;
   border-radius: 14px;
-  font-size: 1.05rem;
+  font-size: 0.94rem;
   font-weight: 900;
   letter-spacing: 0.04em;
   color: #ffffff;
   cursor: pointer;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-  transition: transform 0.1s ease, opacity 0.15s ease;
+  transition: transform 0.1s ease, filter 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-answer:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 .btn-answer:active:not(:disabled) {
@@ -159,55 +176,160 @@
 }
 
 .btn-answer:disabled {
-  opacity: 0.38;
+  opacity: 0.32;
   cursor: not-allowed;
 }
 
 .btn-yes {
   background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .btn-no {
   background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 .btn-skip {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: linear-gradient(135deg, #fbbf24, #d97706);
   color: #111827;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
 }
 
 .ans-icon {
-  font-size: 1.3rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* Form Input Pertanyaan Minimalis Player Aktif */
+.player-question-dock {
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  padding: 10px 12px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.35);
+}
+
+.pq-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.pq-badge {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+}
+
+.pq-meta-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.char-count {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.pq-timer {
+  background: rgba(56, 189, 248, 0.2);
+  color: #bae6fd;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+
+.pq-timer.is-urgent {
+  background: rgba(239, 68, 68, 0.35);
+  color: #fecaca;
+}
+
+.pq-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.pq-input-row textarea {
+  flex: 1;
+  resize: none;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(15, 23, 42, 0.75);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  font-size: 16px;
+  line-height: 1.35;
+  font-family: inherit;
+  min-height: 42px;
+  max-height: 88px;
+}
+
+.pq-input-row textarea:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+}
+
+.btn-send-pill {
+  padding: 11px 16px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fde047, #f59e0b);
+  color: #111827;
+  font-size: 0.88rem;
+  font-weight: 900;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+
+.btn-send-pill:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.btn-send-pill:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.btn-send-pill:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Tombol Polling Penonton */
 .spectator-poll-box {
   background: rgba(15, 23, 42, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 18px;
-  padding: 12px 14px;
-  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 10px 12px;
+  backdrop-filter: blur(14px);
 }
 
 .sp-title {
   text-align: center;
-  font-size: 0.84rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: #e2e8f0;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .spectator-vote-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
 }
 
 .btn-vote {
-  padding: 13px 12px;
+  padding: 12px;
   border: none;
-  border-radius: 12px;
-  font-size: 0.98rem;
+  border-radius: 14px;
+  font-size: 0.92rem;
   font-weight: 900;
   color: #ffffff;
   cursor: pointer;
@@ -227,68 +349,14 @@
   background: linear-gradient(135deg, #ef4444, #dc2626);
 }
 
-/* Panel Input Pertanyaan Player Aktif */
-.player-question-box {
-  background: var(--surface-card);
-  border: 1px solid var(--surface-border);
-  border-radius: var(--radius-lg);
-  padding: 14px;
-  backdrop-filter: blur(10px);
-}
-
-.pq-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  font-weight: 700;
-  color: var(--accent-gold);
-}
-
-.pq-timer {
-  background: rgba(239, 68, 68, 0.25);
-  color: #fecaca;
-  padding: 3px 10px;
-  border-radius: 999px;
-}
-
-.player-question-box textarea {
-  width: 100%;
-  resize: none;
-  border-radius: 10px;
-  border: 1px solid var(--surface-border);
-  background: rgba(15, 23, 42, 0.85);
-  color: var(--text-primary);
-  padding: 10px 12px;
-  font-size: 16px;
-  font-family: inherit;
-}
-
-.pq-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.pq-footer .btn-menu {
-  width: auto;
-  padding: 10px 24px;
-}
-
-.char-count {
-  font-size: 0.82rem;
-  color: var(--text-muted);
-}
-
 .status-pill-bar {
   text-align: center;
-  background: var(--surface-card);
-  border: 1px solid var(--surface-border);
-  border-radius: var(--radius-md);
-  padding: 12px 16px;
-  font-size: 0.95rem;
+  background: rgba(15, 23, 42, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 0.88rem;
+  backdrop-filter: blur(12px);
 }
 
 .pause-overlay {
