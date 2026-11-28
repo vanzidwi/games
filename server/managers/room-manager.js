@@ -70,6 +70,7 @@ export class RoomManager {
         pendingTurnAdvance: false,
         wheelResult: null,
         wheelSpun: false,
+        questionHistory: [],
         poll: {
           active: false,
           honestCount: 0,
@@ -259,6 +260,7 @@ export class RoomManager {
         lastAnswer: room.gameProgress.lastAnswer,
         wheelResult: room.gameProgress.wheelResult,
         wheelSpun: room.gameProgress.wheelSpun,
+        questionHistory: room.gameProgress.questionHistory || [],
         poll: {
           active: poll.active,
           honestCount: poll.honestCount,
