@@ -1,6 +1,7 @@
 import { GAME_CONFIG, ROLES } from '@shared/constants.js';
 import { SOCKET_EVENTS } from '@shared/event-names.js';
 import { socketClient } from '../socket.js';
+import { escapeHtml } from '../utils/escape-html.js';
 import { soundFX } from '../utils/sound.js';
 
 export function renderLobby(container, { session, initialState, onLeave }) {
@@ -14,7 +15,7 @@ export function renderLobby(container, { session, initialState, onLeave }) {
       <header class="lobby-topbar">
         <div class="hud-room-box">
           <span class="hud-label">KODE</span>
-          <strong id="lobby-room-code" class="room-code-badge">${initialState.roomCode}</strong>
+          <strong id="lobby-room-code" class="room-code-badge">${escapeHtml(initialState.roomCode)}</strong>
           <button id="btn-copy-code" class="btn-pill-mini" type="button">Salin</button>
           <span id="lobby-spectator-badge" class="btn-pill-mini">👁️ ${initialState.spectatorCount || 0}</span>
           ${isHost && session.overlayToken ? `<button id="btn-copy-obs" class="btn-pill-mini btn-obs" type="button">OBS</button>` : ''}
@@ -190,7 +191,7 @@ export function renderLobby(container, { session, initialState, onLeave }) {
 
     const hostHtml = `
       <div class="slot-row host-row">
-        <span>👑 <strong>${state.host.name}</strong></span>
+        <span>👑 <strong>${escapeHtml(state.host.name)}</strong></span>
         <span class="badge ${state.host.connected ? 'badge-ok' : 'badge-err'}">
           ${state.host.connected ? 'Online' : 'Putus'}
         </span>
@@ -203,7 +204,7 @@ export function renderLobby(container, { session, initialState, onLeave }) {
         }
         return `
           <div class="slot-row">
-            <span>🎮 <strong>${p.name}</strong></span>
+            <span>🎮 <strong>${escapeHtml(p.name)}</strong></span>
             <span class="badge ${p.ready ? 'badge-ok' : 'badge-warn'}">
               ${p.ready ? 'SIAP' : 'BELUM'}
             </span>
@@ -218,7 +219,7 @@ export function renderLobby(container, { session, initialState, onLeave }) {
           .map(
             (text, idx) => `
           <li class="punishment-item">
-            <span>${idx + 1}. ${text}</span>
+            <span>${idx + 1}. ${escapeHtml(text)}</span>
             ${
               isHost
                 ? `<span class="punishment-actions">
