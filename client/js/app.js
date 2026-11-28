@@ -254,7 +254,13 @@ function initApp() {
         return;
       }
       socketClient.clearSession();
-    }
+      const wasInRoom = Boolean(currentSession || currentScreenName !== 'main-menu');
+      currentSession = null;
+      stage.speechOverlay.hideQuestion();
+      if (wasInRoom) {
+        window.alert(res.error || 'Sesi room telah berakhir atau server baru saja dimulai ulang.');
+        navigate('main-menu');
+      }
   });
 }
 
