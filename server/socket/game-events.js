@@ -23,6 +23,16 @@ export function startNextTurn(io, room) {
   timerManager.clearQuestionTimer(room.roomCode);
   room.gameProgress.pendingTurnAdvance = false;
 
+  // Simpan hasil polling terakhir ke riwayat pertanyaan sebelum di-reset
+  const lastHistory = room.gameProgress.questionHistory?.[room.gameProgress.questionHistory.length - 1];
+  if (lastHistory && room.gameProgress.poll) {
+    lastHistory.poll = {
+      honestCount: room.gameProgress.poll.honestCount,
+      lieCount: room.gameProgress.poll.lieCount,
+      totalVotes: room.gameProgress.poll.honestCount + room.gameProgress.poll.lieCount
+    };
+  }
+
   // Reset polling penonton setiap pergantian giliran
   room.gameProgress.poll = {
     active: false,
@@ -132,7 +142,7 @@ export function registerGameEvents(io, socket) {
     room.gameProgress.pendingTurnAdvance = false;
 
     room.gameProgress.poll = {
-      active: true,
+      active: false,
       honestCount: 0,
       lieCount: 0,
       voters: new Set(),
@@ -153,9 +163,6 @@ export function registerGameEvents(io, socket) {
     });
 
     io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
-    if (ENABLE_TEST_BOTS && room.testSpectatorBots) {
-      scheduleBotSpectatorVotes(io, room, room.gameProgress.currentTurnIndex, roomManager);
-    }
     return reply({ ok: true });
   });
 
@@ -246,16 +253,24 @@ export function registerGameEvents(io, socket) {
     room.gameProgress.lastAnswer = answer;
 
     const activePlayer = room.players[(room.gameProgress.activeSlot || 1) - 1];
-    const currentPoll = room.gameProgress.poll || { honestCount: 0, lieCount: 0 };
+    const allowPoll = answer === ANSWERS.YES || answer === ANSWERS.NO;
+    room.gameProgress.poll = {
+      active: allowPoll,
+      honestCount: 0,
+      lieCount: 0,
+      voters: new Set(),
+      voterIps: new Set()
+    };
+
     room.gameProgress.questionHistory.push({
       turnNumber: room.gameProgress.currentTurnIndex + 1,
       playerName: activePlayer?.name || room.gameProgress.activePlayerId || '-',
       question: room.gameProgress.currentQuestion || '-',
       answer,
       poll: {
-        honestCount: currentPoll.honestCount,
-        lieCount: currentPoll.lieCount,
-        totalVotes: currentPoll.honestCount + currentPoll.lieCount
+        honestCount: 0,
+        lieCount: 0,
+        totalVotes: 0
       }
     });
 
@@ -309,7 +324,7 @@ export function registerGameEvents(io, socket) {
 
     room.gameProgress.completedTurns += 1;
     room.gameProgress.currentQuestion = null;
-    // Tandai bahwa giliran berikutnya menunggu dieksekusi (agar tidak macet jika Host putus di jeda 1.8s)
+    // Tandai bahwa giliran berikutnya menunggu dieksekusi (agar tidak macet jika Host putus di jeda)
     room.gameProgress.pendingTurnAdvance = true;
 
     io.to(room.roomCode).emit(SOCKET_EVENTS.ANSWER_RESULT, {
@@ -321,6 +336,11 @@ export function registerGameEvents(io, socket) {
 
     io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
 
+    if (allowPoll && ENABLE_TEST_BOTS && room.testSpectatorBots) {
+      scheduleBotSpectatorVotes(io, room, room.gameProgress.currentTurnIndex, roomManager);
+    }
+
+    const advanceDelayMs = allowPoll ? 5000 : 1800;
     setTimeout(() => {
       const latestRoom = roomManager.getRoom(room.roomCode);
       if (
@@ -331,7 +351,7 @@ export function registerGameEvents(io, socket) {
       ) {
         startNextTurn(io, latestRoom);
       }
-    }, 1800);
+    }, advanceDelayMs);
 
     return reply({ ok: true, hostLost: false });
   });
