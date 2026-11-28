@@ -1,6 +1,7 @@
 import { GAME_CONFIG, GAME_STATES } from '@shared/constants.js';
 import { SOCKET_EVENTS } from '@shared/event-names.js';
 import { socketClient } from '../socket.js';
+import { escapeHtml } from '../utils/escape-html.js';
 
 /**
  * OBS Browser Source Overlay (/overlay/ROOMCODE?token=...)
@@ -45,12 +46,12 @@ export function renderObsOverlay(container, { roomCode, overlayToken, stage }) {
     skipEl.textContent = `LEWATI: ${gp.skipCount}/${gp.maxSkips}`;
 
     playersBarEl.innerHTML = `
-      <div class="obs-participant obs-host">👑 ${state.host.name}</div>
+      <div class="obs-participant obs-host">👑 ${escapeHtml(state.host.name)}</div>
       ${state.players
         .map((p) =>
           p.empty
             ? `<div class="obs-participant empty">Slot ${p.slotIndex}</div>`
-            : `<div class="obs-participant ${gp.activePlayerId === p.id ? 'active' : ''}">${p.name}</div>`
+            : `<div class="obs-participant ${gp.activePlayerId === p.id ? 'active' : ''}">${escapeHtml(p.name)}</div>`
         )
         .join('')}
     `;
