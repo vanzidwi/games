@@ -1,4 +1,4 @@
-import { GAME_CONFIG, ROLES } from '@shared/constants.js';
+import { AVATAR_ACCESSORIES, AVATAR_COLORS, GAME_CONFIG, ROLES } from '@shared/constants.js';
 import { SOCKET_EVENTS } from '@shared/event-names.js';
 import { socketClient } from '../socket.js';
 import { escapeHtml } from '../utils/escape-html.js';
@@ -7,6 +7,7 @@ import { soundFX } from '../utils/sound.js';
 export function renderLobby(container, { session, initialState, onLeave }) {
   const isHost = session.role === ROLES.HOST;
   const isSpectator = session.role === ROLES.SPECTATOR;
+  const canCustomize = isHost || !isSpectator;
   let localPunishments = [...(initialState.punishments || [])];
   let activeTab = isHost ? 'punishments' : 'players';
 
@@ -26,13 +27,18 @@ export function renderLobby(container, { session, initialState, onLeave }) {
       <div class="lobby-spacer"></div>
 
       <section class="lobby-bottom-dock">
-        <div class="lobby-tabs">
+        <div class="lobby-tabs ${canCustomize ? 'has-avatar' : ''}">
           <button id="tab-players" class="lobby-tab ${activeTab === 'players' ? 'active' : ''}" type="button">
             👥 Peserta (<span id="tab-players-count">0/5</span>)
           </button>
           <button id="tab-punishments" class="lobby-tab ${activeTab === 'punishments' ? 'active' : ''}" type="button">
             🎯 Hukuman (<span id="tab-punish-count">0</span>)
           </button>
+          ${
+            canCustomize
+              ? `<button id="tab-avatar" class="lobby-tab" type="button">🎨 Karakter</button>`
+              : ''
+          }
         </div>
 
         <div id="panel-players" class="lobby-tab-panel ${activeTab === 'players' ? '' : 'hidden'}">
@@ -53,6 +59,29 @@ export function renderLobby(container, { session, initialState, onLeave }) {
           }
           <ul id="punishment-list" class="punishment-list"></ul>
         </div>
+
+        ${
+          canCustomize
+            ? `
+          <div id="panel-avatar" class="lobby-tab-panel hidden">
+            <div class="avatar-section-label">Warna Karakter</div>
+            <div id="avatar-color-grid" class="avatar-color-grid">
+              ${AVATAR_COLORS.map(
+                (hex) =>
+                  `<button class="color-swatch" data-color="${hex}" style="background:${hex};" type="button" aria-label="Warna ${hex}"></button>`
+              ).join('')}
+            </div>
+            <div class="avatar-section-label">Aksesori Kepala</div>
+            <div id="avatar-acc-grid" class="avatar-acc-grid">
+              ${AVATAR_ACCESSORIES.map(
+                (acc) =>
+                  `<button class="btn-acc" data-acc="${acc.id}" type="button">${acc.label}</button>`
+              ).join('')}
+            </div>
+          </div>
+        `
+            : ''
+        }
 
         <div class="lobby-dock-footer">
           ${
@@ -87,8 +116,10 @@ export function renderLobby(container, { session, initialState, onLeave }) {
 
   const tabPlayersBtn = container.querySelector('#tab-players');
   const tabPunishBtn = container.querySelector('#tab-punishments');
+  const tabAvatarBtn = container.querySelector('#tab-avatar');
   const panelPlayers = container.querySelector('#panel-players');
   const panelPunish = container.querySelector('#panel-punishments');
+  const panelAvatar = container.querySelector('#panel-avatar');
   const playersCountEl = container.querySelector('#tab-players-count');
   const punishCountEl = container.querySelector('#tab-punish-count');
 
@@ -97,12 +128,31 @@ export function renderLobby(container, { session, initialState, onLeave }) {
     soundFX.click();
     tabPlayersBtn.classList.toggle('active', tab === 'players');
     tabPunishBtn.classList.toggle('active', tab === 'punishments');
+    tabAvatarBtn?.classList.toggle('active', tab === 'avatar');
     panelPlayers.classList.toggle('hidden', tab !== 'players');
     panelPunish.classList.toggle('hidden', tab !== 'punishments');
+    panelAvatar?.classList.toggle('hidden', tab !== 'avatar');
   };
 
   tabPlayersBtn.addEventListener('click', () => switchTab('players'));
   tabPunishBtn.addEventListener('click', () => switchTab('punishments'));
+  tabAvatarBtn?.addEventListener('click', () => switchTab('avatar'));
+
+  if (canCustomize) {
+    container.querySelectorAll('[data-color]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        soundFX.click();
+        await socketClient.emitAsync(SOCKET_EVENTS.AVATAR_UPDATE, { color: btn.dataset.color });
+      });
+    });
+
+    container.querySelectorAll('[data-acc]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        soundFX.click();
+        await socketClient.emitAsync(SOCKET_EVENTS.AVATAR_UPDATE, { accessory: btn.dataset.acc });
+      });
+    });
+  }
 
   copyCodeBtn.addEventListener('click', () => {
     soundFX.click();
@@ -233,6 +283,19 @@ export function renderLobby(container, { session, initialState, onLeave }) {
           )
           .join('')
       : `<li class="muted-note">Belum ada hukuman.</li>`;
+
+    if (canCustomize) {
+      const me = isHost
+        ? state.host
+        : state.players.find((p) => p.slotIndex === session.slotIndex);
+      const myAvatar = me?.avatar || {};
+      container.querySelectorAll('[data-color]').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.color === myAvatar.color);
+      });
+      container.querySelectorAll('[data-acc]').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.acc === (myAvatar.accessory || 'none'));
+      });
+    }
 
     if (isHost) {
       punishmentListEl.querySelectorAll('[data-del]').forEach((btn) => {
