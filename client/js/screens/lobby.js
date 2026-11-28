@@ -1,4 +1,4 @@
-import { AVATAR_ACCESSORIES, AVATAR_COLORS, GAME_CONFIG, ROLES } from '@shared/constants.js';
+import { AVATAR_ACCESSORIES, AVATAR_COLORS, ENABLE_TEST_BOTS, GAME_CONFIG, ROLES } from '@shared/constants.js';
 import { SOCKET_EVENTS } from '@shared/event-names.js';
 import { socketClient } from '../socket.js';
 import { escapeHtml } from '../utils/escape-html.js';
@@ -88,6 +88,11 @@ export function renderLobby(container, { session, initialState, onLeave }) {
             isHost
               ? `
             <div id="start-blocker" class="blocker-text"></div>
+            ${
+              ENABLE_TEST_BOTS
+                ? `<button id="btn-fill-bots" class="btn-dock btn-ghost" style="width:100%;padding:8px;" type="button">🤖 Isi Bot (Mode Test)</button>`
+                : ''
+            }
             <button id="btn-start-game" class="btn-dock btn-dock-gold" style="width:100%;" type="button" disabled>
               MULAI PERMAINAN
             </button>
@@ -194,6 +199,13 @@ export function renderLobby(container, { session, initialState, onLeave }) {
     const input = container.querySelector('#punishment-input');
     const addBtn = container.querySelector('#btn-add-punishment');
     const startBtn = container.querySelector('#btn-start-game');
+    const fillBotsBtn = container.querySelector('#btn-fill-bots');
+
+    fillBotsBtn?.addEventListener('click', async () => {
+      soundFX.click();
+      fillBotsBtn.disabled = true;
+      await socketClient.emitAsync(SOCKET_EVENTS.TEST_FILL_BOTS);
+    });
 
     const handleAdd = () => {
       const val = input.value.trim();
@@ -320,6 +332,11 @@ export function renderLobby(container, { session, initialState, onLeave }) {
       });
 
       const startBtn = container.querySelector('#btn-start-game');
+      const fillBotsBtn = container.querySelector('#btn-fill-bots');
+      if (fillBotsBtn) {
+        fillBotsBtn.classList.toggle('hidden', joinedCount >= GAME_CONFIG.MAX_PLAYERS);
+        fillBotsBtn.disabled = false;
+      }
       const blockerEl = container.querySelector('#start-blocker');
       startBtn.disabled = !state.canStart;
       blockerEl.textContent = state.canStart
