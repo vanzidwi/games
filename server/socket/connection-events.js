@@ -91,6 +91,7 @@ export function registerConnectionEvents(io, socket) {
     const player = playerManager.findPlayerByToken(room, sessionToken);
     if (player) {
       timerManager.clearLobbyDisconnectTimer(room.roomCode, `P${player.slotIndex}`);
+      timerManager.clearLobbyDisconnectTimer(room.roomCode, `TURN_P${player.slotIndex}`);
       player.socketId = socket.id;
       player.connected = true;
       roomManager.bindSocket(socket.id, room.roomCode, ROLES.PLAYER, player.slotIndex, sessionToken);
@@ -268,10 +269,29 @@ export function registerConnectionEvents(io, socket) {
         room.gameProgress.activeSlot === player.slotIndex &&
         !room.pausedByHostDisconnect
       ) {
-        player.spectatorOnly = true;
-        room.gameProgress.currentQuestion = null;
-        startNextTurn(io, room);
-        return;
+        const slotIdx = player.slotIndex;
+        const expectedTurn = room.gameProgress.currentTurnIndex;
+        timerManager.startLobbyDisconnectTimer(
+          room.roomCode,
+          `TURN_P${slotIdx}`,
+          10000,
+          () => {
+            const latestRoom = roomManager.getRoom(room.roomCode);
+            if (!latestRoom || latestRoom.pausedByHostDisconnect) return;
+            const latestPlayer = latestRoom.players[slotIdx - 1];
+            if (
+              latestPlayer &&
+              !latestPlayer.connected &&
+              latestRoom.state === GAME_STATES.ASKING &&
+              latestRoom.gameProgress.activeSlot === slotIdx &&
+              latestRoom.gameProgress.currentTurnIndex === expectedTurn
+            ) {
+              latestPlayer.spectatorOnly = true;
+              latestRoom.gameProgress.currentQuestion = null;
+              startNextTurn(io, latestRoom);
+            }
+          }
+        );
       }
 
       io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
