@@ -7,6 +7,7 @@ export const SOCKET_EVENTS = Object.freeze({
   // Event room
   ROOM_CREATE: 'room:create',
   ROOM_JOIN: 'room:join',
+  SPECTATOR_JOIN: 'spectator:join',
   ROOM_LEAVE: 'room:leave',
   ROOM_STATE: 'room:state',
   PLAYER_READY: 'player:ready',
@@ -21,6 +22,10 @@ export const SOCKET_EVENTS = Object.freeze({
   ANSWER_RESULT: 'answer:result',
   SKIP_UPDATE: 'skip:update',
   GAME_OVER: 'game:over',
+
+  // Event polling penonton
+  POLL_VOTE: 'poll:vote',
+  POLL_UPDATE: 'poll:update',
 
   // Event roda hukuman
   WHEEL_SPIN: 'wheel:spin',
