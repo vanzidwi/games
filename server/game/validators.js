@@ -1,11 +1,5 @@
 import { GAME_CONFIG } from '../../shared/constants.js';
 
-/**
- * Membersihkan teks dari karakter kontrol & spasi berlebih.
- * @param {unknown} input
- * @param {number} maxLength
- * @returns {string}
- */
 export function sanitizeText(input, maxLength) {
   if (typeof input !== 'string') return '';
   return input
@@ -15,11 +9,6 @@ export function sanitizeText(input, maxLength) {
     .slice(0, maxLength);
 }
 
-/**
- * Validasi nama Host atau Player (wajib diisi, maks 20 karakter).
- * @param {unknown} name
- * @returns {{ valid: boolean, value: string, error?: string }}
- */
 export function validateDisplayName(name) {
   const cleaned = sanitizeText(name, GAME_CONFIG.MAX_NAME_LENGTH);
   if (!cleaned) {
@@ -28,11 +17,6 @@ export function validateDisplayName(name) {
   return { valid: true, value: cleaned };
 }
 
-/**
- * Validasi kode room (6 karakter alfanumerik, case-insensitive).
- * @param {unknown} code
- * @returns {{ valid: boolean, value: string, error?: string }}
- */
 export function validateRoomCode(code) {
   if (typeof code !== 'string') {
     return { valid: false, value: '', error: 'Kode room tidak valid.' };
@@ -47,11 +31,6 @@ export function validateRoomCode(code) {
   return { valid: true, value: normalized };
 }
 
-/**
- * Validasi pertanyaan Player (tidak boleh kosong/whitespace, maks 300 karakter).
- * @param {unknown} text
- * @returns {{ valid: boolean, value: string, error?: string }}
- */
 export function validateQuestion(text) {
   if (typeof text !== 'string') {
     return { valid: false, value: '', error: 'Pertanyaan harus berupa teks.' };
@@ -70,11 +49,6 @@ export function validateQuestion(text) {
   return { valid: true, value: cleaned };
 }
 
-/**
- * Validasi daftar hukuman dari Host (2 - 12 item, masing-masing tidak kosong).
- * @param {unknown} list
- * @returns {{ valid: boolean, value: string[], error?: string }}
- */
 export function validatePunishmentList(list) {
   if (!Array.isArray(list)) {
     return { valid: false, value: [], error: 'Daftar hukuman tidak valid.' };
@@ -104,21 +78,33 @@ export function validatePunishmentList(list) {
 }
 
 /**
- * Rate limiter sederhana per socket dan nama event.
+ * Mengambil alamat IP client dari header proxy (Railway/Cloudflare) atau socket handshake.
+ * @param {import('socket.io').Socket} socket
+ * @returns {string}
+ */
+export function getClientIp(socket) {
+  const forwarded = socket.handshake?.headers?.['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    return forwarded.split(',')[0].trim();
+  }
+  return socket.handshake?.address || socket.id;
+}
+
+/**
+ * Rate limiter dengan pembersihan bucket kadaluarsa otomatis (mencegah memory leak).
  */
 export class RateLimiter {
   constructor() {
     this.buckets = new Map();
+    this.lastPrune = Date.now();
   }
 
-  /**
-   * @param {string} key
-   * @param {number} maxRequests
-   * @param {number} windowMs
-   * @returns {boolean} true jika diizinkan
-   */
   allow(key, maxRequests = 10, windowMs = 5000) {
     const now = Date.now();
+    if (now - this.lastPrune > 60000 && this.buckets.size > 200) {
+      this.prune(now, windowMs);
+    }
+
     const entries = this.buckets.get(key) || [];
     const recent = entries.filter((ts) => now - ts < windowMs);
     if (recent.length >= maxRequests) {
@@ -128,6 +114,18 @@ export class RateLimiter {
     recent.push(now);
     this.buckets.set(key, recent);
     return true;
+  }
+
+  prune(now = Date.now(), maxAgeMs = 30000) {
+    this.lastPrune = now;
+    for (const [key, entries] of this.buckets.entries()) {
+      const recent = entries.filter((ts) => now - ts < maxAgeMs);
+      if (recent.length === 0) {
+        this.buckets.delete(key);
+      } else {
+        this.buckets.set(key, recent);
+      }
+    }
   }
 
   clearPrefix(prefix) {
