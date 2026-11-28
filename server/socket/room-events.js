@@ -309,6 +309,30 @@ export function registerRoomEvents(io, socket) {
     return reply({ ok: true, punishments: res.punishments });
   });
 
+    // Mode Test: isi slot kosong dengan Bot agar Host bisa tes gameplay sendirian
+  socket.on(SOCKET_EVENTS.TEST_FILL_BOTS, (_payload = {}, callback) => {
+    const reply = typeof callback === 'function' ? callback : () => {};
+    if (!ENABLE_TEST_BOTS) {
+      return reply({ ok: false, error: 'Mode test bot dinonaktifkan.' });
+    }
+    const binding = roomManager.getSocketBinding(socket.id);
+    if (!binding || binding.role !== ROLES.HOST) {
+      return reply({ ok: false, error: 'Hanya Host yang dapat mengisi bot.' });
+    }
+    const room = roomManager.getRoom(binding.roomCode);
+    if (!room) return reply({ ok: false, error: 'Room tidak ditemukan.' });
+    if (room.state !== GAME_STATES.WAITING && room.state !== GAME_STATES.LOBBY_READY) {
+      return reply({ ok: false, error: 'Bot hanya bisa ditambahkan di Lobby.' });
+    }
+
+    fillRoomWithBots(room);
+    roomManager.touchRoom(room);
+    roomManager.syncLobbyReadyState(room);
+    io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
+    return reply({ ok: true });
+  });
+
+
   // Host memulai pertandingan
   socket.on(SOCKET_EVENTS.GAME_START, (_payload = {}, callback) => {
     const reply = typeof callback === 'function' ? callback : () => {};
