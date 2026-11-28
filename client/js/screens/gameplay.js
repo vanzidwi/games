@@ -1,12 +1,21 @@
-import { ANSWERS, CAMERA_PRESETS, GAME_CONFIG, GAME_STATES, ROLES } from '@shared/constants.js';
+import {
+  ANSWERS,
+  CAMERA_PRESETS,
+  GAME_CONFIG,
+  GAME_STATES,
+  POLL_OPTIONS,
+  ROLES
+} from '@shared/constants.js';
 import { SOCKET_EVENTS } from '@shared/event-names.js';
 import { socketClient } from '../socket.js';
 import { soundFX } from '../utils/sound.js';
 
 export function renderGameplay(container, { session, initialState, stage }) {
   const isHost = session.role === ROLES.HOST;
+  const isSpectatorRole = session.role === ROLES.SPECTATOR;
   let timerInterval = null;
   let latestState = initialState;
+  let votedTurnNumber = null;
 
   container.innerHTML = `
     <div class="gameplay-hud">
@@ -16,6 +25,7 @@ export function renderGameplay(container, { session, initialState, stage }) {
           <span id="gp-round" class="pill">Ronde 1/2</span>
           <span id="gp-progress" class="pill">Pertanyaan 1/10</span>
           <span id="gp-skip" class="pill pill-warn">LEWATI: 0/${GAME_CONFIG.MAX_SKIPS}</span>
+          <span id="gp-spectators" class="pill">👁️ 0</span>
         </div>
 
         <div class="gp-camera-bar">
@@ -27,7 +37,20 @@ export function renderGameplay(container, { session, initialState, stage }) {
         </div>
       </header>
 
-      <div id="gp-turn-banner" class="gp-turn-banner">Memulai pertandingan...</div>
+      <div class="gp-top-notices">
+        <div id="gp-turn-banner" class="gp-turn-banner">Memulai pertandingan...</div>
+        <div id="gp-poll-bar" class="gp-poll-bar hidden">
+          <div class="poll-labels">
+            <span id="poll-honest-label">😇 Jujur 0%</span>
+            <span id="poll-total-label">0 suara</span>
+            <span id="poll-lie-label">😈 Bohong 0%</span>
+          </div>
+          <div class="poll-track">
+            <div id="poll-fill-honest" class="poll-fill honest" style="width: 50%"></div>
+            <div id="poll-fill-lie" class="poll-fill lie" style="width: 50%"></div>
+          </div>
+        </div>
+      </div>
 
       <div id="host-pause-overlay" class="pause-overlay hidden">
         <div class="pause-card">
@@ -43,12 +66,18 @@ export function renderGameplay(container, { session, initialState, stage }) {
   const roundEl = container.querySelector('#gp-round');
   const progressEl = container.querySelector('#gp-progress');
   const skipEl = container.querySelector('#gp-skip');
+  const spectatorsEl = container.querySelector('#gp-spectators');
   const turnBannerEl = container.querySelector('#gp-turn-banner');
+  const pollBarEl = container.querySelector('#gp-poll-bar');
+  const pollHonestLabel = container.querySelector('#poll-honest-label');
+  const pollLieLabel = container.querySelector('#poll-lie-label');
+  const pollTotalLabel = container.querySelector('#poll-total-label');
+  const pollFillHonest = container.querySelector('#poll-fill-honest');
+  const pollFillLie = container.querySelector('#poll-fill-lie');
   const bottomArea = container.querySelector('#gp-bottom-area');
   const pauseOverlay = container.querySelector('#host-pause-overlay');
   const pauseCountdownEl = container.querySelector('#pause-countdown');
 
-  // Tombol preset kamera lokal
   container.querySelectorAll('[data-preset]').forEach((btn) => {
     btn.addEventListener('click', () => {
       soundFX.click();
@@ -63,9 +92,25 @@ export function renderGameplay(container, { session, initialState, stage }) {
     stage.resetCamera();
   });
 
+  const renderPollBar = (poll) => {
+    if (!poll || (!poll.active && poll.totalVotes === 0)) {
+      pollBarEl.classList.add('hidden');
+      return;
+    }
+    pollBarEl.classList.remove('hidden');
+    const total = poll.totalVotes || 0;
+    const honestPct = total ? Math.round((poll.honestCount / total) * 100) : 50;
+    const liePct = total ? 100 - honestPct : 50;
+
+    pollHonestLabel.textContent = `😇 Jujur ${total ? `${honestPct}%` : '0%'}`;
+    pollLieLabel.textContent = `😈 Bohong ${total ? `${liePct}%` : '0%'}`;
+    pollTotalLabel.textContent = `${total} suara`;
+    pollFillHonest.style.width = `${honestPct}%`;
+    pollFillLie.style.width = `${liePct}%`;
+  };
+
   const renderHostControls = (state) => {
-    const canAnswer =
-      state.state === GAME_STATES.ANSWERING && !state.pausedByHostDisconnect;
+    const canAnswer = state.state === GAME_STATES.ANSWERING && !state.pausedByHostDisconnect;
 
     bottomArea.innerHTML = `
       <div class="host-answer-bar">
@@ -95,13 +140,64 @@ export function renderGameplay(container, { session, initialState, stage }) {
     bottomArea.querySelector('#btn-ans-skip')?.addEventListener('click', () => lockAndSend(ANSWERS.SKIP));
   };
 
+  const renderSpectatorControls = (state) => {
+    const gp = state.gameProgress;
+    const poll = gp.poll;
+    const alreadyVoted = votedTurnNumber === gp.turnNumber;
+
+    if (state.state === GAME_STATES.ANSWERING && poll?.active) {
+      bottomArea.innerHTML = `
+        <div class="spectator-poll-box">
+          <div class="sp-title">${alreadyVoted ? 'Suara Anda tercatat! Menunggu jawaban Host...' : 'Menurut Anda, Host akan menjawab:'}</div>
+          <div class="spectator-vote-row">
+            <button id="btn-vote-honest" class="btn-vote btn-vote-honest" type="button" ${alreadyVoted ? 'disabled' : ''}>
+              😇 JUJUR!
+            </button>
+            <button id="btn-vote-lie" class="btn-vote btn-vote-lie" type="button" ${alreadyVoted ? 'disabled' : ''}>
+              😈 BOHONG!
+            </button>
+          </div>
+        </div>
+      `;
+
+      const sendVote = async (option) => {
+        bottomArea.querySelectorAll('button').forEach((b) => (b.disabled = true));
+        soundFX.click();
+        const res = await socketClient.emitAsync(SOCKET_EVENTS.POLL_VOTE, { option });
+        if (res.ok) {
+          votedTurnNumber = gp.turnNumber;
+          renderSpectatorControls(latestState);
+        }
+      };
+
+      bottomArea.querySelector('#btn-vote-honest')?.addEventListener('click', () =>
+        sendVote(POLL_OPTIONS.HONEST)
+      );
+      bottomArea.querySelector('#btn-vote-lie')?.addEventListener('click', () =>
+        sendVote(POLL_OPTIONS.LIE)
+      );
+      return;
+    }
+
+    bottomArea.innerHTML = `
+      <div class="status-pill-bar">
+        👁️ <strong>Mode Penonton</strong> — Menunggu pertanyaan dikirim untuk ikut polling!
+      </div>
+    `;
+  };
+
   const renderPlayerControls = (state) => {
+    const me = state.players.find((p) => p.slotIndex === session.slotIndex);
+    if (isSpectatorRole || me?.spectatorOnly) {
+      renderSpectatorControls(state);
+      return;
+    }
+
     const isMyTurn = state.gameProgress.activeSlot === session.slotIndex;
     const activePlayer = state.players.find((p) => p.slotIndex === state.gameProgress.activeSlot);
     const activeName = activePlayer?.name || '-';
 
     if (isMyTurn && state.state === GAME_STATES.ASKING && !state.pausedByHostDisconnect) {
-      // Jangan timpa textarea jika sudah dirender pada giliran yang sama
       if (!bottomArea.querySelector('#question-input')) {
         bottomArea.innerHTML = `
           <form id="question-form" class="player-question-box">
@@ -168,16 +264,6 @@ export function renderGameplay(container, { session, initialState, stage }) {
       return;
     }
 
-    const me = state.players.find((p) => p.slotIndex === session.slotIndex);
-    if (me?.spectatorOnly) {
-      bottomArea.innerHTML = `
-        <div class="status-pill-bar">
-          Anda berstatus <strong>PENONTON</strong> karena terhubung ulang setelah giliran terlewati.
-        </div>
-      `;
-      return;
-    }
-
     bottomArea.innerHTML = `
       <div class="status-pill-bar">
         ${
@@ -219,6 +305,7 @@ export function renderGameplay(container, { session, initialState, stage }) {
     progressEl.textContent = `Pertanyaan ${gp.turnNumber}/${gp.totalQuestions}`;
     skipEl.textContent = `LEWATI: ${gp.skipCount}/${gp.maxSkips}`;
     skipEl.className = `pill ${gp.skipCount >= 1 ? 'pill-danger' : 'pill-warn'}`;
+    spectatorsEl.textContent = `👁️ ${state.spectatorCount || 0}`;
 
     const activePlayer = state.players.find((p) => p.slotIndex === gp.activeSlot);
     const activeName = activePlayer?.name || '-';
@@ -226,6 +313,8 @@ export function renderGameplay(container, { session, initialState, stage }) {
       state.state === GAME_STATES.ANSWERING
         ? `${activeName} bertanya kepada ${state.host.name}`
         : `Giliran ${activeName} mengetik pertanyaan...`;
+
+    renderPollBar(gp.poll);
 
     if (state.pausedByHostDisconnect) {
       pauseOverlay.classList.remove('hidden');
