@@ -44,6 +44,7 @@ export class RoomManager {
         skipCount: 0,
         lastAnswer: null,
         answerLocked: false,
+        pendingTurnAdvance: false,
         wheelResult: null,
         wheelSpun: false,
         poll: {
