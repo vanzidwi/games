@@ -1,7 +1,7 @@
 import { ANSWERS, GAME_CONFIG, GAME_STATES, POLL_OPTIONS, ROLES } from '../../shared/constants.js';
 import { SOCKET_EVENTS } from '../../shared/event-names.js';
 import { transitionGameState } from '../game/game-state.js';
-import { RateLimiter, validateQuestion } from '../game/validators.js';
+import { getClientIp, RateLimiter, validateQuestion } from '../game/validators.js';
 import { punishmentManager } from '../managers/punishment-manager.js';
 import { roomManager } from '../managers/room-manager.js';
 import { timerManager } from '../managers/timer-manager.js';
@@ -27,12 +27,14 @@ export function startNextTurn(io, room) {
     active: false,
     honestCount: 0,
     lieCount: 0,
-    voters: new Set()
+    voters: new Set(),
+    voterIps: new Set()
   };
 
   const next = turnManager.advanceToNextValidTurn(room);
   if (next.done) {
     transitionGameState(room, GAME_STATES.HOST_WON);
+    roomManager.markRoomFinished(room);
     room.gameProgress.questionDeadline = null;
     room.gameProgress.activePlayerId = null;
     room.gameProgress.activeSlot = null;
@@ -127,7 +129,8 @@ export function registerGameEvents(io, socket) {
       active: true,
       honestCount: 0,
       lieCount: 0,
-      voters: new Set()
+      voters: new Set(),
+      voterIps: new Set()
     };
 
     transitionGameState(room, GAME_STATES.ANSWERING);
@@ -173,8 +176,9 @@ export function registerGameEvents(io, socket) {
       return reply({ ok: false, error: 'Polling belum dibuka.' });
     }
 
+    const clientIp = getClientIp(socket);
     const voterKey = binding.sessionToken || socket.id;
-    if (poll.voters.has(voterKey)) {
+    if (poll.voters.has(voterKey) || (clientIp !== 'unknown' && poll.voterIps.has(clientIp))) {
       return reply({ ok: false, error: 'Anda sudah memilih pada pertanyaan ini.' });
     }
 
@@ -187,6 +191,8 @@ export function registerGameEvents(io, socket) {
     }
 
     poll.voters.add(voterKey);
+    if (clientIp !== 'unknown') poll.voterIps.add(clientIp);
+    roomManager.touchRoom(room);
 
     const summary = {
       active: poll.active,
@@ -226,6 +232,7 @@ export function registerGameEvents(io, socket) {
       return reply({ ok: false, error: 'Pilihan jawaban tidak valid.' });
     }
 
+    roomManager.touchRoom(room);
     room.gameProgress.answerLocked = true;
     room.gameProgress.lastAnswer = answer;
 
@@ -337,6 +344,7 @@ export function registerGameEvents(io, socket) {
       const latestRoom = roomManager.getRoom(room.roomCode);
       if (latestRoom && latestRoom.state === GAME_STATES.WHEEL_SPINNING) {
         transitionGameState(latestRoom, GAME_STATES.PUNISHMENT_RESULT);
+        roomManager.markRoomFinished(latestRoom);
         io.to(latestRoom.roomCode).emit(
           SOCKET_EVENTS.ROOM_STATE,
           roomManager.serializeRoomState(latestRoom)
