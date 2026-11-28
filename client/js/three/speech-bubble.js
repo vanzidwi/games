@@ -3,7 +3,8 @@ import * as THREE from 'three';
 /**
  * Mengelola proyeksi 3D -> 2D untuk:
  * 1. Speech Bubble pertanyaan tepat di atas kepala Player aktif.
- * 2. Nameplate nama & status di atas kepala seluruh karakter.
+ * 2. Bubble kecil jawaban Host (YA / TIDAK) di atas kepala Host.
+ * 3. Nameplate nama & status di atas kepala seluruh karakter.
  */
 export class SpeechBubbleOverlay {
   constructor(overlayContainer, characterManager, camera) {
@@ -26,6 +27,11 @@ export class SpeechBubbleOverlay {
 
     this.activeBubble = null;
 
+    this.hostBubbleEl = document.createElement('div');
+    this.hostBubbleEl.className = 'host-answer-bubble hidden';
+    this.container.appendChild(this.hostBubbleEl);
+    this.activeHostAnswer = null;
+
     this.nameplates = new Map();
     for (const char of this.characterManager.getAllCharacters()) {
       const el = document.createElement('div');
@@ -33,6 +39,19 @@ export class SpeechBubbleOverlay {
       this.container.appendChild(el);
       this.nameplates.set(char.id, el);
     }
+  }
+
+  showHostAnswer(answer) {
+    this.activeHostAnswer = answer;
+    const isYes = answer === 'YA';
+    this.hostBubbleEl.textContent = isYes ? '✔ YA!' : '✕ TIDAK!';
+    this.hostBubbleEl.className = `host-answer-bubble ${isYes ? 'is-yes' : 'is-no'} fade-in`;
+  }
+
+  hideHostAnswer() {
+    if (!this.activeHostAnswer) return;
+    this.activeHostAnswer = null;
+    this.hostBubbleEl.classList.add('hidden');
   }
 
   showQuestion(playerId, playerName, text) {
@@ -134,6 +153,19 @@ export class SpeechBubbleOverlay {
       el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0) translate(-50%, -100%)`;
     }
 
+    if (this.activeHostAnswer) {
+      const hostChar = this.characterManager.getCharacter('HOST');
+      if (hostChar && hostChar.visible) {
+        const pos = this.projectToScreen(hostChar.headAnchor, 0.25);
+        if (pos.visible) {
+          this.hostBubbleEl.classList.remove('hidden');
+          this.hostBubbleEl.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0) translate(-50%, -100%)`;
+        } else {
+          this.hostBubbleEl.classList.add('hidden');
+        }
+      }
+    }
+
     if (this.activeBubble) {
       const targetChar = this.characterManager.getCharacter(this.activeBubble.playerId);
       if (targetChar && targetChar.visible) {
@@ -154,6 +186,7 @@ export class SpeechBubbleOverlay {
 
   dispose() {
     this.bubbleEl.remove();
+    this.hostBubbleEl.remove();
     for (const el of this.nameplates.values()) {
       el.remove();
     }
