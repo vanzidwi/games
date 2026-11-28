@@ -83,3 +83,5 @@ export const AVATAR_ACCESSORIES = Object.freeze([
   { id: 'halo', label: 'Halo' },
   { id: 'horns', label: 'Tanduk' }
 ]);
+// Ubah ke false sebelum publish untuk menonaktifkan tombol Mode Test Bot
+export const ENABLE_TEST_BOTS = true;
