@@ -1,6 +1,7 @@
-import { AVATAR_ACCESSORIES, AVATAR_COLORS, GAME_STATES, ROLES } from '../../shared/constants.js';
+import { AVATAR_ACCESSORIES, AVATAR_COLORS, ENABLE_TEST_BOTS, GAME_STATES, ROLES } from '../../shared/constants.js';
 import { SOCKET_EVENTS } from '../../shared/event-names.js';
 import { canStartGame } from '../game/game-rules.js';
+import { fillRoomWithBots } from '../game/test-bots.js';
 import {
   getClientIp,
   RateLimiter,
