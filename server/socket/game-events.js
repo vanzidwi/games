@@ -20,6 +20,7 @@ export function startNextTurn(io, room) {
   }
 
   timerManager.clearQuestionTimer(room.roomCode);
+  room.gameProgress.pendingTurnAdvance = false;
 
   // Reset polling penonton setiap pergantian giliran
   room.gameProgress.poll = {
@@ -120,8 +121,8 @@ export function registerGameEvents(io, socket) {
     room.gameProgress.questionDeadline = null;
     room.gameProgress.currentQuestion = validation.value;
     room.gameProgress.answerLocked = false;
+    room.gameProgress.pendingTurnAdvance = false;
 
-    // Aktifkan polling penonton (Jujur vs Bohong!) saat pertanyaan masuk fase ANSWERING
     room.gameProgress.poll = {
       active: true,
       honestCount: 0,
@@ -146,7 +147,7 @@ export function registerGameEvents(io, socket) {
     return reply({ ok: true });
   });
 
-  // Penonton (atau player yang berstatus spectatorOnly) mengirim vote Jujur/Bohong
+  // Penonton mengirim vote Jujur/Bohong
   socket.on(SOCKET_EVENTS.POLL_VOTE, (payload = {}, callback) => {
     const reply = typeof callback === 'function' ? callback : () => {};
     if (!actionLimiter.allow(`${socket.id}:poll`, 4, 3000)) {
@@ -250,6 +251,7 @@ export function registerGameEvents(io, socket) {
       if (room.gameProgress.skipCount >= GAME_CONFIG.MAX_SKIPS) {
         room.gameProgress.currentQuestion = null;
         room.gameProgress.poll.active = false;
+        room.gameProgress.pendingTurnAdvance = false;
         transitionGameState(room, GAME_STATES.HOST_LOST);
         transitionGameState(room, GAME_STATES.WHEEL_READY);
 
@@ -277,6 +279,8 @@ export function registerGameEvents(io, socket) {
 
     room.gameProgress.completedTurns += 1;
     room.gameProgress.currentQuestion = null;
+    // Tandai bahwa giliran berikutnya menunggu dieksekusi (agar tidak macet jika Host putus di jeda 1.8s)
+    room.gameProgress.pendingTurnAdvance = true;
 
     io.to(room.roomCode).emit(SOCKET_EVENTS.ANSWER_RESULT, {
       answer,
@@ -289,7 +293,12 @@ export function registerGameEvents(io, socket) {
 
     setTimeout(() => {
       const latestRoom = roomManager.getRoom(room.roomCode);
-      if (latestRoom && latestRoom.state === GAME_STATES.ANSWERING && !latestRoom.pausedByHostDisconnect) {
+      if (
+        latestRoom &&
+        latestRoom.state === GAME_STATES.ANSWERING &&
+        latestRoom.gameProgress.pendingTurnAdvance &&
+        !latestRoom.pausedByHostDisconnect
+      ) {
         startNextTurn(io, latestRoom);
       }
     }, 1800);
