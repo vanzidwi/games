@@ -63,3 +63,23 @@ export const CAMERA_PRESETS = Object.freeze({
   HOST_VIEW: 'HOST_VIEW',
   PLAYER_VIEW: 'PLAYER_VIEW'
 });
+
+export const AVATAR_COLORS = Object.freeze([
+  '#dc2626',
+  '#3b82f6',
+  '#10b981',
+  '#ec4899',
+  '#8b5cf6',
+  '#f97316',
+  '#eab308',
+  '#0f172a'
+]);
+
+export const AVATAR_ACCESSORIES = Object.freeze([
+  { id: 'none', label: 'Polos' },
+  { id: 'glasses', label: 'Kacamata' },
+  { id: 'cap', label: 'Topi' },
+  { id: 'crown', label: 'Mahkota' },
+  { id: 'halo', label: 'Halo' },
+  { id: 'horns', label: 'Tanduk' }
+]);
