@@ -1,4 +1,10 @@
-import { AVATAR_ACCESSORIES, AVATAR_COLORS, GAME_CONFIG, GAME_STATES } from '../../shared/constants.js';
+import {
+  AVATAR_ACCESSORIES,
+  AVATAR_COLORS,
+  GAME_CONFIG,
+  GAME_STATES,
+  POLL_OPTIONS
+} from '../../shared/constants.js';
 import { SOCKET_EVENTS } from '../../shared/event-names.js';
 import { transitionGameState } from './game-state.js';
 import { generateSessionToken } from './game-rules.js';
@@ -44,6 +50,22 @@ export function fillRoomWithBots(room) {
     }
   }
 
+  // Tambahkan 5 Bot Penonton untuk simulasi live polling
+  room.testSpectatorBots = true;
+  for (let s = 1; s <= 5; s += 1) {
+    const token = `bot-spec-${room.roomCode}-${s}`;
+    if (!room.spectators.has(token)) {
+      room.spectators.set(token, {
+        name: `Bot Penonton ${s}`,
+        ip: `bot-ip-${s}`,
+        sessionToken: token,
+        socketId: null,
+        connected: true,
+        isBot: true
+      });
+    }
+  }
+
   if (room.punishments.length < GAME_CONFIG.MIN_PUNISHMENTS) {
     const defaults = ['Push up 5 kali', 'Nyanyi lagu anak-anak 10 detik'];
     for (const item of defaults) {
@@ -54,6 +76,49 @@ export function fillRoomWithBots(room) {
   }
 
   return added;
+}
+
+export function scheduleBotSpectatorVotes(io, room, expectedTurnIndex, roomManager) {
+  if (!room.testSpectatorBots) return;
+
+  for (let i = 1; i <= 5; i += 1) {
+    setTimeout(() => {
+      const latestRoom = roomManager.getRoom(room.roomCode);
+      if (
+        !latestRoom ||
+        latestRoom.state !== GAME_STATES.ANSWERING ||
+        latestRoom.gameProgress.currentTurnIndex !== expectedTurnIndex ||
+        latestRoom.gameProgress.answerLocked ||
+        latestRoom.pausedByHostDisconnect
+      ) {
+        return;
+      }
+
+      const poll = latestRoom.gameProgress.poll;
+      if (!poll?.active) return;
+
+      const voterKey = `bot-spec-${latestRoom.roomCode}-${i}`;
+      if (poll.voters.has(voterKey)) return;
+
+      const pick = Math.random() < 0.55 ? POLL_OPTIONS.HONEST : POLL_OPTIONS.LIE;
+      if (pick === POLL_OPTIONS.HONEST) poll.honestCount += 1;
+      else poll.lieCount += 1;
+      poll.voters.add(voterKey);
+
+      const summary = {
+        active: poll.active,
+        honestCount: poll.honestCount,
+        lieCount: poll.lieCount,
+        totalVotes: poll.honestCount + poll.lieCount
+      };
+
+      io.to(latestRoom.roomCode).emit(SOCKET_EVENTS.POLL_UPDATE, summary);
+      io.to(latestRoom.roomCode).emit(
+        SOCKET_EVENTS.ROOM_STATE,
+        roomManager.serializeRoomState(latestRoom)
+      );
+    }, 450 * i);
+  }
 }
 
 export function scheduleBotQuestion(io, room, expectedTurnIndex, roomManager) {
@@ -96,6 +161,11 @@ export function scheduleBotQuestion(io, room, expectedTurnIndex, roomManager) {
       animation: 'ask'
     });
 
-    io.to(latestRoom.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(latestRoom));
+    io.to(latestRoom.roomCode).emit(
+      SOCKET_EVENTS.ROOM_STATE,
+      roomManager.serializeRoomState(latestRoom)
+    );
+
+    scheduleBotSpectatorVotes(io, latestRoom, expectedTurnIndex, roomManager);
   }, 1500);
 }
