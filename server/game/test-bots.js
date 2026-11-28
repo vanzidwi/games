@@ -88,7 +88,6 @@ export function scheduleBotSpectatorVotes(io, room, expectedTurnIndex, roomManag
         !latestRoom ||
         latestRoom.state !== GAME_STATES.ANSWERING ||
         latestRoom.gameProgress.currentTurnIndex !== expectedTurnIndex ||
-        latestRoom.gameProgress.answerLocked ||
         latestRoom.pausedByHostDisconnect
       ) {
         return;
@@ -141,7 +140,7 @@ export function scheduleBotQuestion(io, room, expectedTurnIndex, roomManager) {
     latestRoom.gameProgress.pendingTurnAdvance = false;
 
     latestRoom.gameProgress.poll = {
-      active: true,
+      active: false,
       honestCount: 0,
       lieCount: 0,
       voters: new Set(),
@@ -165,7 +164,5 @@ export function scheduleBotQuestion(io, room, expectedTurnIndex, roomManager) {
       SOCKET_EVENTS.ROOM_STATE,
       roomManager.serializeRoomState(latestRoom)
     );
-
-    scheduleBotSpectatorVotes(io, latestRoom, expectedTurnIndex, roomManager);
   }, 1500);
 }
