@@ -8,14 +8,14 @@ export function renderJoinRoom(container, { onNavigate, onRoomEntered }) {
     <div class="menu-overlay menu-minimal">
       <header class="menu-topbar">
         <button id="btn-back" class="btn-topbar-icon" type="button">← Kembali</button>
-        <div class="conn-pill is-online"><span>🎮 Mode Player</span></div>
+        <div class="conn-pill is-online"><span>🎮 Gabung Room</span></div>
       </header>
 
       <div class="menu-title-header">
         <h2 class="minimal-title" style="font-size: clamp(1.5rem, 4.5vw, 2.2rem);">
           GABUNG <span>ROOM</span>
         </h2>
-        <p class="minimal-tagline">Masukkan nama dan kode 6 karakter dari Host</p>
+        <p class="minimal-tagline">Masuk sebagai Player (maks. 5) atau Penonton (polling)</p>
       </div>
 
       <div class="menu-spacer"></div>
@@ -23,7 +23,7 @@ export function renderJoinRoom(container, { onNavigate, onRoomEntered }) {
       <form id="join-room-form" class="menu-bottom-dock dock-form" novalidate>
         <div class="dock-input-grid">
           <div class="form-group" style="margin-bottom: 0;">
-            <label for="player-name">Nama Player</label>
+            <label for="player-name">Nama</label>
             <input
               id="player-name"
               type="text"
@@ -50,10 +50,16 @@ export function renderJoinRoom(container, { onNavigate, onRoomEntered }) {
 
         <p id="join-error" class="error-text hidden" style="margin-top: 8px;"></p>
 
-        <button id="btn-submit-join" class="btn-dock btn-dock-dark" style="width:100%; margin-top: 10px;" type="submit">
-          <span>🎮</span>
-          <span>GABUNG ROOM</span>
-        </button>
+        <div class="dock-buttons" style="margin-top: 10px;">
+          <button id="btn-submit-join" class="btn-dock btn-dock-dark" type="submit">
+            <span>🎮</span>
+            <span>PLAYER</span>
+          </button>
+          <button id="btn-submit-spectate" class="btn-dock btn-ghost" style="border-radius:14px;" type="button">
+            <span>👁️</span>
+            <span>PENONTON</span>
+          </button>
+        </div>
       </form>
     </div>
   `;
@@ -64,14 +70,14 @@ export function renderJoinRoom(container, { onNavigate, onRoomEntered }) {
   const codeInput = container.querySelector('#room-code');
   const errorEl = container.querySelector('#join-error');
   const submitBtn = container.querySelector('#btn-submit-join');
+  const spectateBtn = container.querySelector('#btn-submit-spectate');
 
   backBtn.addEventListener('click', () => {
     soundFX.click();
     onNavigate('main-menu');
   });
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+  const joinWithEvent = async (eventName, triggerBtn, defaultHtml) => {
     soundFX.click();
     errorEl.classList.add('hidden');
 
@@ -79,7 +85,7 @@ export function renderJoinRoom(container, { onNavigate, onRoomEntered }) {
     const roomCode = codeInput.value.trim().toUpperCase();
 
     if (!playerName) {
-      errorEl.textContent = 'Nama Player wajib diisi.';
+      errorEl.textContent = 'Nama wajib diisi.';
       errorEl.classList.remove('hidden');
       return;
     }
@@ -90,18 +96,17 @@ export function renderJoinRoom(container, { onNavigate, onRoomEntered }) {
     }
 
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Bergabung...';
+    spectateBtn.disabled = true;
+    triggerBtn.textContent = 'Menghubungkan...';
 
-    const res = await socketClient.emitAsync(SOCKET_EVENTS.ROOM_JOIN, {
-      playerName,
-      roomCode
-    });
+    const res = await socketClient.emitAsync(eventName, { playerName, roomCode });
 
     if (!res.ok) {
       errorEl.textContent = res.error || 'Gagal bergabung ke room.';
       errorEl.classList.remove('hidden');
       submitBtn.disabled = false;
-      submitBtn.innerHTML = '<span>🎮</span><span>GABUNG ROOM</span>';
+      spectateBtn.disabled = false;
+      triggerBtn.innerHTML = defaultHtml;
       return;
     }
 
@@ -113,5 +118,18 @@ export function renderJoinRoom(container, { onNavigate, onRoomEntered }) {
     });
 
     onRoomEntered(res);
+  };
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    joinWithEvent(SOCKET_EVENTS.ROOM_JOIN, submitBtn, '<span>🎮</span><span>PLAYER</span>');
+  });
+
+  spectateBtn.addEventListener('click', () => {
+    joinWithEvent(
+      SOCKET_EVENTS.SPECTATOR_JOIN,
+      spectateBtn,
+      '<span>👁️</span><span>PENONTON</span>'
+    );
   });
 }
