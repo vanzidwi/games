@@ -55,9 +55,9 @@ export function renderGameplay(container, { session, initialState, stage }) {
           <div id="gp-turn-banner" class="gp-turn-banner">Memulai pertandingan...</div>
           <div id="gp-poll-bar" class="gp-poll-bar hidden">
             <div class="poll-labels">
-              <span id="poll-honest-label">😇 0%</span>
+              <span id="poll-honest-label">Jujur 0%</span>
               <span id="poll-total-label">0 suara</span>
-              <span id="poll-lie-label">😈 0%</span>
+              <span id="poll-lie-label">Bohong 0%</span>
             </div>
             <div class="poll-track">
               <div id="poll-fill-honest" class="poll-fill honest" style="width: 50%"></div>
