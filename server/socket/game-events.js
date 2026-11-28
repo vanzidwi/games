@@ -1,6 +1,7 @@
-import { ANSWERS, GAME_CONFIG, GAME_STATES, POLL_OPTIONS, ROLES } from '../../shared/constants.js';
+import { ANSWERS, ENABLE_TEST_BOTS, GAME_CONFIG, GAME_STATES, POLL_OPTIONS, ROLES } from '../../shared/constants.js';
 import { SOCKET_EVENTS } from '../../shared/event-names.js';
 import { transitionGameState } from '../game/game-state.js';
+import { scheduleBotQuestion } from '../game/test-bots.js';
 import { getClientIp, RateLimiter, validateQuestion } from '../game/validators.js';
 import { punishmentManager } from '../managers/punishment-manager.js';
 import { roomManager } from '../managers/room-manager.js';
@@ -87,6 +88,11 @@ export function startNextTurn(io, room) {
   });
 
   io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
+
+  const activePlayer = room.players[meta.slotIndex - 1];
+  if (ENABLE_TEST_BOTS && activePlayer?.isBot) {
+    scheduleBotQuestion(io, room, meta.turnIndex, roomManager);
+  }
 }
 
 export function registerGameEvents(io, socket) {
