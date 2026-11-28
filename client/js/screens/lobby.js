@@ -5,6 +5,7 @@ import { soundFX } from '../utils/sound.js';
 
 export function renderLobby(container, { session, initialState, onLeave }) {
   const isHost = session.role === ROLES.HOST;
+  const isSpectator = session.role === ROLES.SPECTATOR;
   let localPunishments = [...(initialState.punishments || [])];
   let activeTab = isHost ? 'punishments' : 'players';
 
@@ -15,6 +16,7 @@ export function renderLobby(container, { session, initialState, onLeave }) {
           <span class="hud-label">KODE</span>
           <strong id="lobby-room-code" class="room-code-badge">${initialState.roomCode}</strong>
           <button id="btn-copy-code" class="btn-pill-mini" type="button">Salin</button>
+          <span id="lobby-spectator-badge" class="btn-pill-mini">👁️ ${initialState.spectatorCount || 0}</span>
           ${isHost && session.overlayToken ? `<button id="btn-copy-obs" class="btn-pill-mini btn-obs" type="button">OBS</button>` : ''}
         </div>
         <button id="btn-leave-room" class="btn-pill-mini btn-danger" type="button">Keluar</button>
@@ -60,6 +62,10 @@ export function renderLobby(container, { session, initialState, onLeave }) {
               MULAI PERMAINAN
             </button>
           `
+              : isSpectator
+              ? `
+            <div class="blocker-text">👁️ Anda masuk sebagai <strong>PENONTON</strong> — menunggu Host memulai.</div>
+          `
               : `
             <button id="btn-toggle-ready" class="btn-dock btn-dock-dark" style="width:100%;" type="button">
               SIAP BERMAIN
@@ -76,6 +82,7 @@ export function renderLobby(container, { session, initialState, onLeave }) {
   const copyCodeBtn = container.querySelector('#btn-copy-code');
   const copyObsBtn = container.querySelector('#btn-copy-obs');
   const leaveBtn = container.querySelector('#btn-leave-room');
+  const spectatorBadgeEl = container.querySelector('#lobby-spectator-badge');
 
   const tabPlayersBtn = container.querySelector('#tab-players');
   const tabPunishBtn = container.querySelector('#tab-punishments');
@@ -160,7 +167,7 @@ export function renderLobby(container, { session, initialState, onLeave }) {
       startBtn.disabled = true;
       await socketClient.emitAsync(SOCKET_EVENTS.GAME_START);
     });
-  } else {
+  } else if (!isSpectator) {
     const readyBtn = container.querySelector('#btn-toggle-ready');
     let isReady = false;
     readyBtn.addEventListener('click', async () => {
@@ -172,6 +179,10 @@ export function renderLobby(container, { session, initialState, onLeave }) {
 
   const updateUI = (state) => {
     localPunishments = [...state.punishments];
+
+    if (spectatorBadgeEl) {
+      spectatorBadgeEl.textContent = `👁️ ${state.spectatorCount || 0}`;
+    }
 
     const joinedCount = state.players.filter((p) => !p.empty).length;
     playersCountEl.textContent = `${joinedCount}/5`;
@@ -250,7 +261,7 @@ export function renderLobby(container, { session, initialState, onLeave }) {
       blockerEl.textContent = state.canStart
         ? 'Semua siap! Tekan Mulai untuk bermain.'
         : state.startBlockReason;
-    } else {
+    } else if (!isSpectator) {
       const me = state.players.find((p) => p.slotIndex === session.slotIndex);
       const readyBtn = container.querySelector('#btn-toggle-ready');
       if (me && readyBtn) {
