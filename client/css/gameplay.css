@@ -421,6 +421,7 @@
 /* Speech Bubble 3D-Projected di atas kepala Player */
 .speech-bubble-3d {
   position: absolute;
+  z-index: 20;
   top: 0;
   left: 0;
   max-width: min(320px, 78vw);
@@ -473,6 +474,7 @@
 /* Nameplate mengambang di atas karakter */
 .char-nameplate {
   position: absolute;
+  z-index: 1;
   top: 0;
   left: 0;
   display: inline-flex;
