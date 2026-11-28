@@ -2,6 +2,7 @@ export class TimerManager {
   constructor() {
     this.questionTimers = new Map();
     this.hostDisconnectTimers = new Map();
+    this.lobbyDisconnectTimers = new Map(); // key: `${roomCode}:${participantId}`
   }
 
   startQuestionTimer(roomCode, durationMs, onTimeout) {
@@ -42,9 +43,35 @@ export class TimerManager {
     }
   }
 
+  startLobbyDisconnectTimer(roomCode, participantId, durationMs, onExpire) {
+    const key = `${roomCode}:${participantId}`;
+    this.clearLobbyDisconnectTimer(roomCode, participantId);
+    const handle = setTimeout(() => {
+      this.lobbyDisconnectTimers.delete(key);
+      onExpire();
+    }, durationMs);
+    this.lobbyDisconnectTimers.set(key, handle);
+  }
+
+  clearLobbyDisconnectTimer(roomCode, participantId) {
+    const key = `${roomCode}:${participantId}`;
+    const handle = this.lobbyDisconnectTimers.get(key);
+    if (handle) {
+      clearTimeout(handle);
+      this.lobbyDisconnectTimers.delete(key);
+    }
+  }
+
   clearAllForRoom(roomCode) {
     this.clearQuestionTimer(roomCode);
     this.clearHostDisconnectTimer(roomCode);
+    const prefix = `${roomCode}:`;
+    for (const [key, handle] of this.lobbyDisconnectTimers.entries()) {
+      if (key.startsWith(prefix)) {
+        clearTimeout(handle);
+        this.lobbyDisconnectTimers.delete(key);
+      }
+    }
   }
 }
 
