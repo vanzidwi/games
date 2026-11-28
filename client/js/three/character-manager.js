@@ -70,11 +70,82 @@ function createStylizedFallback({ isHost = false, palette }) {
   rightEye.position.set(0.09, 0.17, isHost ? 0.24 : 0.21);
   head.add(leftEye, rightEye);
 
+  const accessoryGroup = new THREE.Group();
+  head.add(accessoryGroup);
+
   return {
     modelGroup,
+    bodyMat,
+    accessoryGroup,
     bones: { torso, neck, head, leftArm, rightArm },
     eyes: [leftEye, rightEye]
   };
+}
+
+function buildAccessoryGroup(group, accessoryId, isHost) {
+  while (group.children.length > 0) {
+    group.remove(group.children[0]);
+  }
+  const scale = isHost ? 1.15 : 1.0;
+  group.scale.setScalar(scale);
+
+  if (accessoryId === 'glasses') {
+    const frameMat = new THREE.MeshStandardMaterial({ color: '#0f172a', roughness: 0.3, metalness: 0.4 });
+    const lensMat = new THREE.MeshStandardMaterial({ color: '#38bdf8', roughness: 0.1, transparent: true, opacity: 0.55 });
+    const leftRim = new THREE.Mesh(new THREE.TorusGeometry(0.068, 0.014, 8, 18), frameMat);
+    leftRim.position.set(-0.085, 0.17, 0.23);
+    const rightRim = new THREE.Mesh(new THREE.TorusGeometry(0.068, 0.014, 8, 18), frameMat);
+    rightRim.position.set(0.085, 0.17, 0.23);
+    const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.016, 0.016), frameMat);
+    bridge.position.set(0, 0.175, 0.235);
+    const leftLens = new THREE.Mesh(new THREE.CircleGeometry(0.06, 16), lensMat);
+    leftLens.position.set(-0.085, 0.17, 0.228);
+    const rightLens = new THREE.Mesh(new THREE.CircleGeometry(0.06, 16), lensMat);
+    rightLens.position.set(0.085, 0.17, 0.228);
+    group.add(leftRim, rightRim, bridge, leftLens, rightLens);
+  } else if (accessoryId === 'cap') {
+    const capMat = new THREE.MeshStandardMaterial({ color: '#1e293b', roughness: 0.55 });
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(0.245, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.52),
+      capMat
+    );
+    dome.position.set(0, 0.18, 0);
+    const visor = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.025, 16, 1, false, -0.9, 1.8), capMat);
+    visor.position.set(0, 0.21, 0.12);
+    visor.rotation.x = 0.18;
+    group.add(dome, visor);
+  } else if (accessoryId === 'crown') {
+    const goldMat = new THREE.MeshStandardMaterial({ color: '#fbbf24', roughness: 0.25, metalness: 0.6 });
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.07, 16), goldMat);
+    base.position.set(0, 0.39, 0);
+    group.add(base);
+    for (let i = 0; i < 4; i += 1) {
+      const ang = (i / 4) * Math.PI * 2;
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.09, 8), goldMat);
+      spike.position.set(Math.cos(ang) * 0.1, 0.45, Math.sin(ang) * 0.1);
+      group.add(spike);
+    }
+  } else if (accessoryId === 'halo') {
+    const haloMat = new THREE.MeshStandardMaterial({
+      color: '#fde047',
+      emissive: '#f59e0b',
+      emissiveIntensity: 0.45,
+      roughness: 0.2
+    });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.025, 10, 24), haloMat);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(0, 0.46, 0);
+    group.add(ring);
+  } else if (accessoryId === 'horns') {
+    const hornMat = new THREE.MeshStandardMaterial({ color: '#991b1b', roughness: 0.4 });
+    const leftHorn = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.16, 10), hornMat);
+    leftHorn.position.set(-0.13, 0.37, 0.02);
+    leftHorn.rotation.z = 0.35;
+    const rightHorn = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.16, 10), hornMat);
+    rightHorn.position.set(0.13, 0.37, 0.02);
+    rightHorn.rotation.z = -0.35;
+    group.add(leftHorn, rightHorn);
+  }
 }
 
 function findBoneByKeywords(root, keywords) {
@@ -226,6 +297,9 @@ export class CharacterManager {
       visible,
       root,
       fallbackGroup: fallback.modelGroup,
+      bodyMat: fallback.bodyMat,
+      accessoryGroup: fallback.accessoryGroup,
+      currentAccessory: 'none',
       bones: fallback.bones,
       eyes: fallback.eyes,
       headAnchor,
@@ -294,9 +368,26 @@ export class CharacterManager {
     );
   }
 
+  applyAvatar(char, avatar) {
+    if (!char || !avatar) return;
+    if (avatar.color && char.bodyMat) {
+      char.bodyMat.color.set(avatar.color);
+    }
+    const acc = avatar.accessory || 'none';
+    if (char.accessoryGroup && char.currentAccessory !== acc) {
+      char.currentAccessory = acc;
+      buildAccessoryGroup(char.accessoryGroup, acc, char.isHost);
+    }
+  }
+
   syncFromRoomState(roomState) {
     if (!roomState) return;
     const activeId = roomState.gameProgress?.activePlayerId || null;
+
+    const hostChar = this.characters.get('HOST');
+    if (hostChar && roomState.host?.avatar) {
+      this.applyAvatar(hostChar, roomState.host.avatar);
+    }
 
     roomState.players.forEach((p) => {
       const char = this.characters.get(p.id);
@@ -305,6 +396,9 @@ export class CharacterManager {
       const shouldShow = !p.empty;
       char.visible = shouldShow;
       char.root.visible = shouldShow;
+      if (shouldShow && p.avatar) {
+        this.applyAvatar(char, p.avatar);
+      }
 
       const isActive = shouldShow && p.id === activeId;
       char.highlightRing.material.opacity = isActive ? 0.9 : 0;
