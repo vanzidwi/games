@@ -1,4 +1,4 @@
-import { ANSWERS, GAME_STATES } from '@shared/constants.js';
+import { ANSWERS, GAME_STATES, ROLES } from '@shared/constants.js';
 import { SOCKET_EVENTS } from '@shared/event-names.js';
 import { renderCreateRoom } from './screens/create-room.js';
 import { renderGameplay } from './screens/gameplay.js';
