@@ -1,7 +1,7 @@
 import { ANSWERS, ENABLE_TEST_BOTS, GAME_CONFIG, GAME_STATES, POLL_OPTIONS, ROLES } from '../../shared/constants.js';
 import { SOCKET_EVENTS } from '../../shared/event-names.js';
 import { transitionGameState } from '../game/game-state.js';
-import { scheduleBotQuestion } from '../game/test-bots.js';
+import { scheduleBotQuestion, scheduleBotSpectatorVotes } from '../game/test-bots.js';
 import { getClientIp, RateLimiter, validateQuestion } from '../game/validators.js';
 import { punishmentManager } from '../managers/punishment-manager.js';
 import { roomManager } from '../managers/room-manager.js';
@@ -153,6 +153,9 @@ export function registerGameEvents(io, socket) {
     });
 
     io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
+    if (ENABLE_TEST_BOTS && room.testSpectatorBots) {
+      scheduleBotSpectatorVotes(io, room, room.gameProgress.currentTurnIndex, roomManager);
+    }
     return reply({ ok: true });
   });
 
