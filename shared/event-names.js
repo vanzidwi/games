@@ -14,6 +14,7 @@ export const SOCKET_EVENTS = Object.freeze({
   AVATAR_UPDATE: 'avatar:update',
   PUNISHMENT_UPDATE: 'punishment:update',
   GAME_START: 'game:start',
+  TEST_FILL_BOTS: 'test:fill_bots',
 
   // Event gameplay
   TURN_START: 'turn:start',
