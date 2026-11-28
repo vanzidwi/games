@@ -35,6 +35,13 @@ export class CameraController {
       this.applySensitivity(cfg.cameraSensitivity)
     );
 
+    this.transitionPos = null;
+    this.transitionTarget = null;
+    this.controls.addEventListener('start', () => {
+      this.transitionPos = null;
+      this.transitionTarget = null;
+    });
+
     this.setPreset(CAMERA_PRESETS.FREE);
 
     this.onKeyDown = (e) => {
@@ -56,6 +63,8 @@ export class CameraController {
   }
 
   setPreset(presetName) {
+    this.transitionPos = null;
+    this.transitionTarget = null;
     const preset =
       CAMERA_PRESET_TARGETS[presetName] || CAMERA_PRESET_TARGETS[CAMERA_PRESETS.FREE];
     this.camera.position.copy(preset.position);
@@ -67,7 +76,31 @@ export class CameraController {
     this.setPreset(CAMERA_PRESETS.FREE);
   }
 
+  focusOnCharacter(char) {
+    if (!char) return;
+    const p = char.root.position.clone();
+    const dir = new THREE.Vector3(p.x, 0, p.z);
+    if (dir.lengthSq() < 0.001) {
+      dir.set(0, 0, 1);
+    } else {
+      dir.normalize();
+    }
+    this.transitionPos = new THREE.Vector3(-dir.x * 2.6, p.y + 3.0, -dir.z * 2.6);
+    this.transitionTarget = new THREE.Vector3(p.x, p.y + 1.35, p.z);
+  }
+
   update() {
+    if (this.transitionPos && this.transitionTarget) {
+      this.camera.position.lerp(this.transitionPos, 0.1);
+      this.controls.target.lerp(this.transitionTarget, 0.12);
+      if (
+        this.camera.position.distanceTo(this.transitionPos) < 0.05 &&
+        this.controls.target.distanceTo(this.transitionTarget) < 0.05
+      ) {
+        this.transitionPos = null;
+        this.transitionTarget = null;
+      }
+    }
     this.controls.update();
     // Batasi pan agar kamera tidak keluar terlalu jauh dari area studio
     const t = this.controls.target;
