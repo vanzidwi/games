@@ -9,7 +9,7 @@
 }
 
 .gp-top-bar,
-.gp-turn-banner,
+.gp-top-notices,
 .gp-bottom-area,
 .pause-overlay {
   pointer-events: auto;
@@ -68,15 +68,59 @@
   border-color: transparent;
 }
 
+.gp-top-notices {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  pointer-events: none;
+}
+
 .gp-turn-banner {
-  align-self: center;
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(15, 23, 42, 0.82);
   border: 1px solid var(--surface-border);
   border-radius: 999px;
   padding: 6px 16px;
   font-size: 0.9rem;
   font-weight: 600;
-  margin-top: 6px;
+}
+
+/* Live Polling Penonton */
+.gp-poll-bar {
+  width: 100%;
+  max-width: 360px;
+  background: rgba(15, 23, 42, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  padding: 8px 12px;
+  backdrop-filter: blur(8px);
+}
+
+.poll-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.poll-track {
+  display: flex;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.poll-fill.honest {
+  background: #10b981;
+  transition: width 0.25s ease;
+}
+
+.poll-fill.lie {
+  background: #ef4444;
+  transition: width 0.25s ease;
 }
 
 .gp-bottom-area {
@@ -136,6 +180,53 @@
   font-size: 1.3rem;
 }
 
+/* Tombol Polling Penonton */
+.spectator-poll-box {
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  padding: 12px 14px;
+  backdrop-filter: blur(12px);
+}
+
+.sp-title {
+  text-align: center;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-bottom: 10px;
+}
+
+.spectator-vote-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btn-vote {
+  padding: 13px 12px;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.98rem;
+  font-weight: 900;
+  color: #ffffff;
+  cursor: pointer;
+  transition: transform 0.1s ease, opacity 0.15s ease;
+}
+
+.btn-vote:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-vote-honest {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.btn-vote-lie {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
 /* Panel Input Pertanyaan Player Aktif */
 .player-question-box {
   background: var(--surface-card);
@@ -169,7 +260,7 @@
   background: rgba(15, 23, 42, 0.85);
   color: var(--text-primary);
   padding: 10px 12px;
-  font-size: 0.96rem;
+  font-size: 16px;
   font-family: inherit;
 }
 
