@@ -236,6 +236,20 @@ export function registerGameEvents(io, socket) {
     room.gameProgress.answerLocked = true;
     room.gameProgress.lastAnswer = answer;
 
+    const activePlayer = room.players[(room.gameProgress.activeSlot || 1) - 1];
+    const currentPoll = room.gameProgress.poll || { honestCount: 0, lieCount: 0 };
+    room.gameProgress.questionHistory.push({
+      turnNumber: room.gameProgress.currentTurnIndex + 1,
+      playerName: activePlayer?.name || room.gameProgress.activePlayerId || '-',
+      question: room.gameProgress.currentQuestion || '-',
+      answer,
+      poll: {
+        honestCount: currentPoll.honestCount,
+        lieCount: currentPoll.lieCount,
+        totalVotes: currentPoll.honestCount + currentPoll.lieCount
+      }
+    });
+
     const animMap = {
       [ANSWERS.YES]: 'nod',
       [ANSWERS.NO]: 'shake',
