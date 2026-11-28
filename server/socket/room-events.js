@@ -1,4 +1,4 @@
-import { GAME_STATES, ROLES } from '../../shared/constants.js';
+import { AVATAR_ACCESSORIES, AVATAR_COLORS, GAME_STATES, ROLES } from '../../shared/constants.js';
 import { SOCKET_EVENTS } from '../../shared/event-names.js';
 import { canStartGame } from '../game/game-rules.js';
 import {
@@ -250,6 +250,40 @@ export function registerRoomEvents(io, socket) {
 
     io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
     return reply({ ok: true });
+  });
+
+  // Host atau Player mengubah warna & aksesori karakter di Lobby
+  socket.on(SOCKET_EVENTS.AVATAR_UPDATE, (payload = {}, callback) => {
+    const reply = typeof callback === 'function' ? callback : () => {};
+    const binding = roomManager.getSocketBinding(socket.id);
+    if (!binding || (binding.role !== ROLES.HOST && binding.role !== ROLES.PLAYER)) {
+      return reply({ ok: false, error: 'Hanya Host atau Player yang dapat mengubah karakter.' });
+    }
+
+    const room = roomManager.getRoom(binding.roomCode);
+    if (!room) return reply({ ok: false, error: 'Room tidak ditemukan.' });
+    if (room.state !== GAME_STATES.WAITING && room.state !== GAME_STATES.LOBBY_READY) {
+      return reply({ ok: false, error: 'Karakter hanya bisa diubah di Lobby.' });
+    }
+
+    const target = binding.role === ROLES.HOST ? room.host : room.players[binding.slotIndex - 1];
+    if (!target) return reply({ ok: false, error: 'Peserta tidak ditemukan.' });
+
+    const nextAvatar = { ...(target.avatar || { color: '#3b82f6', accessory: 'none' }) };
+    if (typeof payload.color === 'string' && AVATAR_COLORS.includes(payload.color)) {
+      nextAvatar.color = payload.color;
+    }
+    if (
+      typeof payload.accessory === 'string' &&
+      AVATAR_ACCESSORIES.some((a) => a.id === payload.accessory)
+    ) {
+      nextAvatar.accessory = payload.accessory;
+    }
+
+    target.avatar = nextAvatar;
+    roomManager.touchRoom(room);
+    io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
+    return reply({ ok: true, avatar: nextAvatar });
   });
 
   // Host memperbarui daftar hukuman (2..12)
