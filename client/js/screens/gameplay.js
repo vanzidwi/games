@@ -114,19 +114,21 @@ export function renderGameplay(container, { session, initialState, stage }) {
     const canAnswer = state.state === GAME_STATES.ANSWERING && !state.pausedByHostDisconnect;
 
     bottomArea.innerHTML = `
-      <div class="host-answer-bar">
-        <button id="btn-ans-yes" class="btn-answer btn-yes" type="button" ${canAnswer ? '' : 'disabled'}>
-          <span class="ans-icon">✔</span>
-          <span>YA</span>
-        </button>
-        <button id="btn-ans-no" class="btn-answer btn-no" type="button" ${canAnswer ? '' : 'disabled'}>
-          <span class="ans-icon">✕</span>
-          <span>TIDAK</span>
-        </button>
-        <button id="btn-ans-skip" class="btn-answer btn-skip" type="button" ${canAnswer ? '' : 'disabled'}>
-          <span class="ans-icon">⏭</span>
-          <span>LEWATI</span>
-        </button>
+      <div class="host-answer-dock">
+        <div class="host-answer-bar">
+          <button id="btn-ans-yes" class="btn-answer btn-yes" type="button" ${canAnswer ? '' : 'disabled'}>
+            <span class="ans-icon">✔</span>
+            <span>YA</span>
+          </button>
+          <button id="btn-ans-no" class="btn-answer btn-no" type="button" ${canAnswer ? '' : 'disabled'}>
+            <span class="ans-icon">✕</span>
+            <span>TIDAK</span>
+          </button>
+          <button id="btn-ans-skip" class="btn-answer btn-skip" type="button" ${canAnswer ? '' : 'disabled'}>
+            <span class="ans-icon">⏭</span>
+            <span>LEWATI</span>
+          </button>
+        </div>
       </div>
     `;
 
@@ -201,23 +203,27 @@ export function renderGameplay(container, { session, initialState, stage }) {
     if (isMyTurn && state.state === GAME_STATES.ASKING && !state.pausedByHostDisconnect) {
       if (!bottomArea.querySelector('#question-input')) {
         bottomArea.innerHTML = `
-          <form id="question-form" class="player-question-box">
-            <div class="pq-header">
-              <span>Giliran Anda Bertanya!</span>
-              <span id="pq-timer" class="pq-timer">60s</span>
+          <form id="question-form" class="player-question-dock">
+            <div class="pq-meta-row">
+              <span class="pq-badge">✨ Giliran Anda Bertanya</span>
+              <div class="pq-meta-right">
+                <span id="pq-char-count" class="char-count">0/${GAME_CONFIG.MAX_QUESTION_LENGTH}</span>
+                <span id="pq-timer" class="pq-timer">60s</span>
+              </div>
             </div>
-            <textarea
-              id="question-input"
-              maxlength="${GAME_CONFIG.MAX_QUESTION_LENGTH}"
-              rows="2"
-              placeholder="Tulis pertanyaan untuk Host (maks. 300 karakter)..."
-              required
-            ></textarea>
-            <div class="pq-footer">
-              <span id="pq-char-count" class="char-count">0/${GAME_CONFIG.MAX_QUESTION_LENGTH}</span>
-              <button id="btn-send-question" class="btn-menu btn-gold" type="submit">KIRIM</button>
+            <div class="pq-input-row">
+              <textarea
+                id="question-input"
+                maxlength="${GAME_CONFIG.MAX_QUESTION_LENGTH}"
+                rows="1"
+                placeholder="Ketik pertanyaan untuk Host..."
+                required
+              ></textarea>
+              <button id="btn-send-question" class="btn-send-pill" type="submit">
+                KIRIM →
+              </button>
             </div>
-            <p id="pq-error" class="error-text hidden"></p>
+            <p id="pq-error" class="error-text hidden" style="margin-top:6px;margin-bottom:0;"></p>
           </form>
         `;
 
@@ -229,6 +235,15 @@ export function renderGameplay(container, { session, initialState, stage }) {
 
         textarea.addEventListener('input', () => {
           charCount.textContent = `${textarea.value.length}/${GAME_CONFIG.MAX_QUESTION_LENGTH}`;
+          textarea.style.height = 'auto';
+          textarea.style.height = `${Math.min(88, textarea.scrollHeight)}px`;
+        });
+
+        textarea.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            form.requestSubmit();
+          }
         });
 
         form.addEventListener('submit', async (e) => {
@@ -242,14 +257,14 @@ export function renderGameplay(container, { session, initialState, stage }) {
           }
           soundFX.click();
           sendBtn.disabled = true;
-          sendBtn.textContent = 'Mengirim...';
+          sendBtn.textContent = '...';
 
           const res = await socketClient.emitAsync(SOCKET_EVENTS.QUESTION_SUBMIT, { question });
           if (!res.ok) {
             errEl.textContent = res.error || 'Gagal mengirim pertanyaan.';
             errEl.classList.remove('hidden');
             sendBtn.disabled = false;
-            sendBtn.textContent = 'KIRIM';
+            sendBtn.textContent = 'KIRIM →';
           }
         });
       }
@@ -286,6 +301,7 @@ export function renderGameplay(container, { session, initialState, stage }) {
           Math.ceil((latestState.gameProgress.questionDeadline - Date.now()) / 1000)
         );
         pqTimer.textContent = `${sec}s`;
+        pqTimer.classList.toggle('is-urgent', sec <= 10);
       }
       if (latestState.pausedByHostDisconnect && latestState.hostDisconnectDeadline) {
         const sec = Math.max(
