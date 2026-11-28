@@ -1,20 +1,38 @@
 import { GAME_STATES, ROLES } from '../../shared/constants.js';
 import { SOCKET_EVENTS } from '../../shared/event-names.js';
 import { canStartGame } from '../game/game-rules.js';
-import { RateLimiter, validateDisplayName, validateRoomCode } from '../game/validators.js';
+import {
+  getClientIp,
+  RateLimiter,
+  validateDisplayName,
+  validateRoomCode
+} from '../game/validators.js';
 import { playerManager } from '../managers/player-manager.js';
 import { punishmentManager } from '../managers/punishment-manager.js';
-import { roomManager } from '../managers/room-manager.js';
+import { ROOM_LIMITS, roomManager } from '../managers/room-manager.js';
 import { startNextTurn } from './game-events.js';
 
 const roomLimiter = new RateLimiter();
 
 export function registerRoomEvents(io, socket) {
+  const clientIp = getClientIp(socket);
+
   // Buat Room (Host)
   socket.on(SOCKET_EVENTS.ROOM_CREATE, (payload = {}, callback) => {
     const reply = typeof callback === 'function' ? callback : () => {};
-    if (!roomLimiter.allow(`${socket.id}:create`, 4, 10000)) {
-      return reply({ ok: false, error: 'Terlalu sering membuat room. Tunggu sebentar.' });
+    if (!roomLimiter.allow(`ip:${clientIp}:create`, 5, 60000)) {
+      return reply({ ok: false, error: 'Terlalu sering membuat room. Coba lagi 1 menit.' });
+    }
+
+    if (roomManager.rooms.size >= ROOM_LIMITS.MAX_TOTAL_ROOMS) {
+      return reply({ ok: false, error: 'Server sedang penuh. Coba lagi beberapa saat.' });
+    }
+
+    if (roomManager.countRoomsByIp(clientIp) >= ROOM_LIMITS.MAX_ROOMS_PER_IP) {
+      return reply({
+        ok: false,
+        error: `Maksimal ${ROOM_LIMITS.MAX_ROOMS_PER_IP} room aktif per jaringan.`
+      });
     }
 
     const nameCheck = validateDisplayName(payload.hostName);
@@ -22,7 +40,7 @@ export function registerRoomEvents(io, socket) {
       return reply({ ok: false, error: nameCheck.error });
     }
 
-    const { room, sessionToken } = roomManager.createRoom(nameCheck.value, socket.id);
+    const { room, sessionToken } = roomManager.createRoom(nameCheck.value, socket.id, clientIp);
     socket.join(room.roomCode);
 
     const state = roomManager.serializeRoomState(room);
@@ -42,7 +60,7 @@ export function registerRoomEvents(io, socket) {
   // Gabung Room (Player)
   socket.on(SOCKET_EVENTS.ROOM_JOIN, (payload = {}, callback) => {
     const reply = typeof callback === 'function' ? callback : () => {};
-    if (!roomLimiter.allow(`${socket.id}:join`, 6, 10000)) {
+    if (!roomLimiter.allow(`ip:${clientIp}:join`, 10, 30000)) {
       return reply({ ok: false, error: 'Terlalu banyak percobaan bergabung.' });
     }
 
@@ -78,7 +96,14 @@ export function registerRoomEvents(io, socket) {
       });
     }
 
-    roomManager.bindSocket(socket.id, room.roomCode, ROLES.PLAYER, added.player.slotIndex);
+    roomManager.touchRoom(room);
+    roomManager.bindSocket(
+      socket.id,
+      room.roomCode,
+      ROLES.PLAYER,
+      added.player.slotIndex,
+      added.player.sessionToken
+    );
     socket.join(room.roomCode);
     roomManager.syncLobbyReadyState(room);
 
@@ -98,7 +123,7 @@ export function registerRoomEvents(io, socket) {
   // Gabung Room sebagai Penonton (Spectator)
   socket.on(SOCKET_EVENTS.SPECTATOR_JOIN, (payload = {}, callback) => {
     const reply = typeof callback === 'function' ? callback : () => {};
-    if (!roomLimiter.allow(`${socket.id}:spectate`, 6, 10000)) {
+    if (!roomLimiter.allow(`ip:${clientIp}:spectate`, 10, 30000)) {
       return reply({ ok: false, error: 'Terlalu banyak percobaan bergabung.' });
     }
 
@@ -117,7 +142,12 @@ export function registerRoomEvents(io, socket) {
       return reply({ ok: false, error: 'Room tidak ditemukan atau sudah berakhir.' });
     }
 
-    const spectator = roomManager.addSpectator(room, nameCheck.value, socket.id);
+    if (room.spectators.size >= ROOM_LIMITS.MAX_SPECTATORS_PER_ROOM) {
+      return reply({ ok: false, error: 'Kapasitas penonton di room ini sudah penuh.' });
+    }
+
+    roomManager.touchRoom(room);
+    const spectator = roomManager.addOrReuseSpectator(room, nameCheck.value, socket.id, clientIp);
     socket.join(room.roomCode);
 
     const state = roomManager.serializeRoomState(room);
@@ -214,6 +244,7 @@ export function registerRoomEvents(io, socket) {
       return reply({ ok: false, error: 'Permainan sudah dimulai.' });
     }
 
+    roomManager.touchRoom(room);
     playerManager.setPlayerReady(room, binding.slotIndex, Boolean(payload.ready));
     roomManager.syncLobbyReadyState(room);
 
@@ -237,6 +268,7 @@ export function registerRoomEvents(io, socket) {
       return reply({ ok: false, error: res.error });
     }
 
+    roomManager.touchRoom(room);
     roomManager.syncLobbyReadyState(room);
     io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
     return reply({ ok: true, punishments: res.punishments });
@@ -258,6 +290,7 @@ export function registerRoomEvents(io, socket) {
       return reply({ ok: false, error: check.reason });
     }
 
+    roomManager.touchRoom(room);
     startNextTurn(io, room);
     return reply({ ok: true });
   });
