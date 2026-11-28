@@ -29,7 +29,6 @@ const io = new Server(httpServer, {
       if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      // Izinkan preview & production domain Vercel secara otomatis jika diaktifkan
       if (origin.endsWith('.vercel.app')) {
         return callback(null, true);
       }
@@ -38,8 +37,8 @@ const io = new Server(httpServer, {
     methods: ['GET', 'POST'],
     credentials: true
   },
-  pingInterval: 10000,
-  pingTimeout: 5000
+  pingInterval: 15000,
+  pingTimeout: 25000
 });
 
 app.use(express.json());
