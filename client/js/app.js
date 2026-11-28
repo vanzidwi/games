@@ -261,6 +261,7 @@ function initApp() {
         window.alert(res.error || 'Sesi room telah berakhir atau server baru saja dimulai ulang.');
         navigate('main-menu');
       }
+    }
   });
 }
 
