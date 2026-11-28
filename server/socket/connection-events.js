@@ -34,6 +34,7 @@ export function registerConnectionEvents(io, socket) {
 
     // Cek Host
     if (room.host.sessionToken === sessionToken) {
+      timerManager.clearLobbyDisconnectTimer(room.roomCode, 'HOST');
       room.host.socketId = socket.id;
       room.host.connected = true;
       roomManager.bindSocket(socket.id, room.roomCode, ROLES.HOST, 0, sessionToken);
@@ -66,8 +67,14 @@ export function registerConnectionEvents(io, socket) {
         io.to(room.roomCode).emit(SOCKET_EVENTS.HOST_RECONNECTED, {
           hostName: room.host.name
         });
+
+        // Jika Host putus tepat setelah menjawab (dalam jeda 1.8s), lanjutkan giliran yang tertunda
+        if (room.state === GAME_STATES.ANSWERING && room.gameProgress.pendingTurnAdvance) {
+          startNextTurn(io, room);
+        }
       }
 
+      roomManager.syncLobbyReadyState(room);
       const state = roomManager.serializeRoomState(room);
       io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, state);
       return reply({
@@ -83,11 +90,13 @@ export function registerConnectionEvents(io, socket) {
     // Cek Player
     const player = playerManager.findPlayerByToken(room, sessionToken);
     if (player) {
+      timerManager.clearLobbyDisconnectTimer(room.roomCode, `P${player.slotIndex}`);
       player.socketId = socket.id;
       player.connected = true;
       roomManager.bindSocket(socket.id, room.roomCode, ROLES.PLAYER, player.slotIndex, sessionToken);
       socket.join(room.roomCode);
 
+      roomManager.syncLobbyReadyState(room);
       const state = roomManager.serializeRoomState(room);
       io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, state);
       return reply({
@@ -148,10 +157,31 @@ export function registerConnectionEvents(io, socket) {
     if (binding.role === ROLES.HOST) {
       room.host.connected = false;
 
+      // Di Lobby: beri masa tenggang 45 detik sebelum room dibatalkan
       if (room.state === GAME_STATES.WAITING || room.state === GAME_STATES.LOBBY_READY) {
-        room.state = GAME_STATES.CANCELLED;
+        roomManager.syncLobbyReadyState(room);
         io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
-        roomManager.deleteRoom(room.roomCode);
+
+        timerManager.startLobbyDisconnectTimer(
+          room.roomCode,
+          'HOST',
+          GAME_CONFIG.LOBBY_RECONNECT_TIMEOUT_MS,
+          () => {
+            const latestRoom = roomManager.getRoom(room.roomCode);
+            if (latestRoom && !latestRoom.host.connected) {
+              latestRoom.state = GAME_STATES.CANCELLED;
+              io.to(latestRoom.roomCode).emit(SOCKET_EVENTS.GAME_OVER, {
+                winner: null,
+                reason: 'HOST_DISCONNECT_TIMEOUT'
+              });
+              io.to(latestRoom.roomCode).emit(
+                SOCKET_EVENTS.ROOM_STATE,
+                roomManager.serializeRoomState(latestRoom)
+              );
+              roomManager.deleteRoom(latestRoom.roomCode);
+            }
+          }
+        );
         return;
       }
 
@@ -194,10 +224,36 @@ export function registerConnectionEvents(io, socket) {
       const player = room.players[binding.slotIndex - 1];
       if (!player) return;
 
+      // Di Lobby: beri masa tenggang 45 detik sebelum slot dikosongkan
       if (room.state === GAME_STATES.WAITING || room.state === GAME_STATES.LOBBY_READY) {
-        playerManager.removePlayerFromLobby(room, binding.slotIndex);
+        player.connected = false;
         roomManager.syncLobbyReadyState(room);
         io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, roomManager.serializeRoomState(room));
+
+        const slotIdx = player.slotIndex;
+        timerManager.startLobbyDisconnectTimer(
+          room.roomCode,
+          `P${slotIdx}`,
+          GAME_CONFIG.LOBBY_RECONNECT_TIMEOUT_MS,
+          () => {
+            const latestRoom = roomManager.getRoom(room.roomCode);
+            if (!latestRoom) return;
+            const latestPlayer = latestRoom.players[slotIdx - 1];
+            if (
+              latestPlayer &&
+              !latestPlayer.connected &&
+              (latestRoom.state === GAME_STATES.WAITING ||
+                latestRoom.state === GAME_STATES.LOBBY_READY)
+            ) {
+              playerManager.removePlayerFromLobby(latestRoom, slotIdx);
+              roomManager.syncLobbyReadyState(latestRoom);
+              io.to(latestRoom.roomCode).emit(
+                SOCKET_EVENTS.ROOM_STATE,
+                roomManager.serializeRoomState(latestRoom)
+              );
+            }
+          }
+        );
         return;
       }
 
