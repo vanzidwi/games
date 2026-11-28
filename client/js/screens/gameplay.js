@@ -17,39 +17,29 @@ export function renderGameplay(container, { session, initialState, stage }) {
   let timerInterval = null;
   let latestState = initialState;
   let votedTurnNumber = null;
+  let cameraMenuOpen = false;
 
   container.innerHTML = `
     <div class="gameplay-hud">
-      <header class="gp-top-bar">
-        <div class="gp-meta">
-          <span class="pill">Room: <strong>${escapeHtml(initialState.roomCode)}</strong></span>
-          <span id="gp-round" class="pill">Ronde 1/2</span>
-          <span id="gp-progress" class="pill">Pertanyaan 1/10</span>
-          <span id="gp-skip" class="pill pill-warn">LEWATI: 0/${GAME_CONFIG.MAX_SKIPS}</span>
-          <span id="gp-spectators" class="pill">👁️ 0</span>
-        </div>
+      <div class="gp-top-wrap">
+        <header class="gp-top-bar">
+          <div class="gp-meta">
+            <span id="gp-progress" class="pill">R1/2 · 1/10</span>
+            <span id="gp-skip" class="pill pill-warn">LEWATI 0/${GAME_CONFIG.MAX_SKIPS}</span>
+            <span id="gp-spectators" class="pill">👁️ 0</span>
+          </div>
 
-        <div class="gp-camera-bar">
+          <button id="btn-toggle-cam" class="btn-cam-toggle" type="button" title="Atur Kamera">
+            📷 Kamera
+          </button>
+        </header>
+
+        <div id="gp-camera-drawer" class="gp-camera-bar hidden">
           <button class="btn-cam active" data-preset="${CAMERA_PRESETS.FREE}" type="button">Free</button>
           <button class="btn-cam" data-preset="${CAMERA_PRESETS.OVERVIEW}" type="button">Overview</button>
           <button class="btn-cam" data-preset="${CAMERA_PRESETS.HOST_VIEW}" type="button">Host</button>
           <button class="btn-cam" data-preset="${CAMERA_PRESETS.PLAYER_VIEW}" type="button">Player</button>
           <button id="btn-reset-cam" class="btn-cam" type="button" title="Reset Kamera (R)">Reset</button>
-        </div>
-      </header>
-
-      <div class="gp-top-notices">
-        <div id="gp-turn-banner" class="gp-turn-banner">Memulai pertandingan...</div>
-        <div id="gp-poll-bar" class="gp-poll-bar hidden">
-          <div class="poll-labels">
-            <span id="poll-honest-label">😇 Jujur 0%</span>
-            <span id="poll-total-label">0 suara</span>
-            <span id="poll-lie-label">😈 Bohong 0%</span>
-          </div>
-          <div class="poll-track">
-            <div id="poll-fill-honest" class="poll-fill honest" style="width: 50%"></div>
-            <div id="poll-fill-lie" class="poll-fill lie" style="width: 50%"></div>
-          </div>
         </div>
       </div>
 
@@ -60,14 +50,32 @@ export function renderGameplay(container, { session, initialState, stage }) {
         </div>
       </div>
 
-      <footer id="gp-bottom-area" class="gp-bottom-area"></footer>
+      <div class="gp-bottom-stack">
+        <div class="gp-bottom-notices">
+          <div id="gp-turn-banner" class="gp-turn-banner">Memulai pertandingan...</div>
+          <div id="gp-poll-bar" class="gp-poll-bar hidden">
+            <div class="poll-labels">
+              <span id="poll-honest-label">😇 0%</span>
+              <span id="poll-total-label">0 suara</span>
+              <span id="poll-lie-label">😈 0%</span>
+            </div>
+            <div class="poll-track">
+              <div id="poll-fill-honest" class="poll-fill honest" style="width: 50%"></div>
+              <div id="poll-fill-lie" class="poll-fill lie" style="width: 50%"></div>
+            </div>
+          </div>
+        </div>
+
+        <footer id="gp-bottom-area" class="gp-bottom-area"></footer>
+      </div>
     </div>
   `;
 
-  const roundEl = container.querySelector('#gp-round');
   const progressEl = container.querySelector('#gp-progress');
   const skipEl = container.querySelector('#gp-skip');
   const spectatorsEl = container.querySelector('#gp-spectators');
+  const camToggleBtn = container.querySelector('#btn-toggle-cam');
+  const camDrawer = container.querySelector('#gp-camera-drawer');
   const turnBannerEl = container.querySelector('#gp-turn-banner');
   const pollBarEl = container.querySelector('#gp-poll-bar');
   const pollHonestLabel = container.querySelector('#poll-honest-label');
@@ -78,6 +86,13 @@ export function renderGameplay(container, { session, initialState, stage }) {
   const bottomArea = container.querySelector('#gp-bottom-area');
   const pauseOverlay = container.querySelector('#host-pause-overlay');
   const pauseCountdownEl = container.querySelector('#pause-countdown');
+
+  camToggleBtn.addEventListener('click', () => {
+    soundFX.click();
+    cameraMenuOpen = !cameraMenuOpen;
+    camDrawer.classList.toggle('hidden', !cameraMenuOpen);
+    camToggleBtn.classList.toggle('active', cameraMenuOpen);
+  });
 
   container.querySelectorAll('[data-preset]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -94,17 +109,18 @@ export function renderGameplay(container, { session, initialState, stage }) {
   });
 
   const renderPollBar = (poll) => {
-    if (!poll || (!poll.active && poll.totalVotes === 0)) {
+    const total = poll?.totalVotes || 0;
+    const shouldShow = poll && poll.active && (total > 0 || isSpectatorRole);
+    if (!shouldShow) {
       pollBarEl.classList.add('hidden');
       return;
     }
     pollBarEl.classList.remove('hidden');
-    const total = poll.totalVotes || 0;
     const honestPct = total ? Math.round((poll.honestCount / total) * 100) : 50;
     const liePct = total ? 100 - honestPct : 50;
 
-    pollHonestLabel.textContent = `😇 Jujur ${total ? `${honestPct}%` : '0%'}`;
-    pollLieLabel.textContent = `😈 Bohong ${total ? `${liePct}%` : '0%'}`;
+    pollHonestLabel.textContent = `😇 ${total ? `${honestPct}%` : '0%'}`;
+    pollLieLabel.textContent = `😈 ${total ? `${liePct}%` : '0%'}`;
     pollTotalLabel.textContent = `${total} suara`;
     pollFillHonest.style.width = `${honestPct}%`;
     pollFillLie.style.width = `${liePct}%`;
@@ -151,7 +167,7 @@ export function renderGameplay(container, { session, initialState, stage }) {
     if (state.state === GAME_STATES.ANSWERING && poll?.active) {
       bottomArea.innerHTML = `
         <div class="spectator-poll-box">
-          <div class="sp-title">${alreadyVoted ? 'Suara Anda tercatat! Menunggu jawaban Host...' : 'Menurut Anda, Host akan menjawab:'}</div>
+          <div class="sp-title">${alreadyVoted ? 'Suara tercatat! Menunggu Host...' : 'Menurutmu, Host akan:'}</div>
           <div class="spectator-vote-row">
             <button id="btn-vote-honest" class="btn-vote btn-vote-honest" type="button" ${alreadyVoted ? 'disabled' : ''}>
               😇 JUJUR!
@@ -184,7 +200,7 @@ export function renderGameplay(container, { session, initialState, stage }) {
 
     bottomArea.innerHTML = `
       <div class="status-pill-bar">
-        👁️ <strong>Mode Penonton</strong> — Menunggu pertanyaan dikirim untuk ikut polling!
+        👁️ <strong>Mode Penonton</strong> — Menunggu pertanyaan...
       </div>
     `;
   };
@@ -274,7 +290,7 @@ export function renderGameplay(container, { session, initialState, stage }) {
     if (isMyTurn && state.state === GAME_STATES.ANSWERING) {
       bottomArea.innerHTML = `
         <div class="status-pill-bar">
-          Pertanyaan terkirim! <strong>MENUNGGU JAWABAN HOST...</strong>
+          Pertanyaan terkirim! <strong>Menunggu Host...</strong>
         </div>
       `;
       return;
@@ -284,8 +300,8 @@ export function renderGameplay(container, { session, initialState, stage }) {
       <div class="status-pill-bar">
         ${
           state.state === GAME_STATES.ANSWERING
-            ? `<strong>${escapeHtml(activeName)}</strong> sudah bertanya — Menunggu jawaban Host...`
-            : `Giliran bertanya: <strong>${escapeHtml(activeName)}</strong>`
+            ? `<strong>${escapeHtml(activeName)}</strong> bertanya — Menunggu Host...`
+            : `Giliran: <strong>${escapeHtml(activeName)}</strong>`
         }
       </div>
     `;
@@ -318,9 +334,8 @@ export function renderGameplay(container, { session, initialState, stage }) {
     latestState = state;
     const gp = state.gameProgress;
 
-    roundEl.textContent = `Ronde ${gp.round}/${gp.totalRounds}`;
-    progressEl.textContent = `Pertanyaan ${gp.turnNumber}/${gp.totalQuestions}`;
-    skipEl.textContent = `LEWATI: ${gp.skipCount}/${gp.maxSkips}`;
+    progressEl.textContent = `R${gp.round}/${gp.totalRounds} · ${gp.turnNumber}/${gp.totalQuestions}`;
+    skipEl.textContent = `LEWATI ${gp.skipCount}/${gp.maxSkips}`;
     skipEl.className = `pill ${gp.skipCount >= 1 ? 'pill-danger' : 'pill-warn'}`;
     spectatorsEl.textContent = `👁️ ${state.spectatorCount || 0}`;
 
@@ -328,8 +343,8 @@ export function renderGameplay(container, { session, initialState, stage }) {
     const activeName = activePlayer?.name || '-';
     turnBannerEl.textContent =
       state.state === GAME_STATES.ANSWERING
-        ? `${activeName} bertanya kepada ${state.host.name}`
-        : `Giliran ${activeName} mengetik pertanyaan...`;
+        ? `${activeName} → ${state.host.name}`
+        : `Giliran ${activeName} bertanya...`;
 
     renderPollBar(gp.poll);
 
