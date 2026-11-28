@@ -1,14 +1,56 @@
-import { GAME_STATES, ROLES } from '@shared/constants.js';
+import { ANSWERS, GAME_STATES, ROLES } from '@shared/constants.js';
 import { SOCKET_EVENTS } from '@shared/event-names.js';
 import { PunishmentWheel } from '../gameplay/punishment-wheel.js';
 import { socketClient } from '../socket.js';
 import { escapeHtml } from '../utils/escape-html.js';
 import { soundFX } from '../utils/sound.js';
 
+function renderRecapHtml(history = []) {
+  if (!history.length) return '';
+
+  const itemsHtml = history
+    .map((item) => {
+      const ansClass =
+        item.answer === ANSWERS.YES
+          ? 'ans-yes'
+          : item.answer === ANSWERS.NO
+            ? 'ans-no'
+            : 'ans-skip';
+
+      const total = item.poll?.totalVotes || 0;
+      let pollHtml = '';
+      if (total > 0) {
+        const honestPct = Math.round((item.poll.honestCount / total) * 100);
+        const liePct = 100 - honestPct;
+        pollHtml = `<div class="recap-poll">😇 Jujur ${honestPct}% · 😈 Bohong ${liePct}% (${total} suara)</div>`;
+      }
+
+      return `
+        <li class="recap-item">
+          <div class="recap-top">
+            <span class="recap-player">#${item.turnNumber} · ${escapeHtml(item.playerName)}</span>
+            <span class="recap-ans ${ansClass}">${escapeHtml(item.answer)}</span>
+          </div>
+          <div class="recap-q">${escapeHtml(item.question)}</div>
+          ${pollHtml}
+        </li>
+      `;
+    })
+    .join('');
+
+  return `
+    <div class="recap-box">
+      <div class="recap-title">Rekap Pertanyaan & Polling (${history.length})</div>
+      <ul class="recap-list">${itemsHtml}</ul>
+    </div>
+  `;
+}
+
 export function renderResultScreen(container, { session, initialState, onExitToMenu }) {
   const isHost = session.role === ROLES.HOST;
   const hostWon =
     initialState.state === GAME_STATES.HOST_WON || initialState.state === GAME_STATES.FINISHED;
+  const history = initialState.gameProgress?.questionHistory || [];
 
   if (hostWon) {
     soundFX.win();
@@ -21,6 +63,7 @@ export function renderResultScreen(container, { session, initialState, onExitToM
             <strong>${escapeHtml(initialState.host.name)}</strong> berhasil menyelesaikan seluruh 10 pertanyaan
             dengan total LEWATI <strong>${initialState.gameProgress.skipCount}/${initialState.gameProgress.maxSkips}</strong>.
           </p>
+          ${renderRecapHtml(history)}
           <button id="btn-back-home" class="btn-menu btn-gold" type="button">Kembali ke Main Menu</button>
         </div>
       </div>
@@ -47,6 +90,7 @@ export function renderResultScreen(container, { session, initialState, onExitToM
         </div>
 
         <div id="wheel-result-banner" class="wheel-result-banner hidden"></div>
+        <div id="wheel-recap-container" class="hidden">${renderRecapHtml(history)}</div>
 
         <div class="wheel-actions">
           ${
@@ -65,6 +109,7 @@ export function renderResultScreen(container, { session, initialState, onExitToM
   const spinBtn = container.querySelector('#btn-spin-wheel');
   const waitNote = container.querySelector('#wheel-wait-note');
   const resultBanner = container.querySelector('#wheel-result-banner');
+  const recapContainer = container.querySelector('#wheel-recap-container');
   const homeBtn = container.querySelector('#btn-wheel-home');
 
   if (spinBtn) {
@@ -86,6 +131,7 @@ export function renderResultScreen(container, { session, initialState, onExitToM
   const showFinalResult = (text) => {
     resultBanner.innerHTML = `<span>HUKUMAN TERPILIH:</span><strong>${escapeHtml(text)}</strong>`;
     resultBanner.classList.remove('hidden');
+    if (history.length) recapContainer.classList.remove('hidden');
     homeBtn.classList.remove('hidden');
     if (waitNote) waitNote.classList.add('hidden');
     if (spinBtn) spinBtn.classList.add('hidden');
